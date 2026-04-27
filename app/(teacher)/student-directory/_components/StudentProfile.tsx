@@ -227,7 +227,7 @@ export default function StudentProfile({
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans p-6">
+    <div className="min-h-screen bg-surface font-sans p-6 max-w-7xl mx-auto">
       {/* Back button */}
       {onBack && (
         <Button

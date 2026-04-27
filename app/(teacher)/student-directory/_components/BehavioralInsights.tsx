@@ -3,33 +3,7 @@
 import { Zap, AlertTriangle, Target, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface BehavioralInsight {
-  id: string;
-  icon: "fast" | "review" | "resilience" | "methodical";
-  title: string;
-  description: string;
-}
-
-export interface QuizAttempt {
-  id: string;
-  title: string;
-  subtitle: string;
-  date: string;
-  score: number;
-  maxScore: number;
-  percentage: number;
-  timePerQuestion: string;
-  status: "PASSED" | "FAILED";
-}
-
-export interface BehavioralInsightsProps {
-  insights?: BehavioralInsight[];
-  quizAttempts?: QuizAttempt[];
-  onViewFullHistory?: () => void;
-}
+import { BehavioralInsight, BehavioralInsightsProps, QuizAttempt } from "@/lib/data";
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
@@ -142,6 +116,9 @@ const iconConfig: Record<
     titleColor: "text-purple-600",
   },
 };
+
+
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 

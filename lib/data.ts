@@ -1,7 +1,5 @@
 // types.ts
 
-import { BehavioralInsight } from "@/app/student-directory/_components/BehavioralInsights";
-
 /**
  * AUTH & USER ROLES
  * Used for sidebar logic and route protection.
@@ -44,20 +42,6 @@ export interface Question {
   options?: string[]; // For multiple choice
   correct_answer: string;
   points: number;
-}
-
-/**
- * PERFORMANCE & ANALYTICS
- * Matches your "Average Performance" card and "Insights" charts.
- */
-export interface QuizAttempt {
-  id: string;
-  student_id: string;
-  quiz_id: string;
-  score: number;
-  percentage: number;
-  completed_at: string;
-  time_spent_seconds: number;
 }
 
 export interface PerformanceStats {
@@ -122,9 +106,34 @@ export interface StudentProfileData {
   quizAttempts?: QuizAttempt[];
 }
 
-interface StudentProfileProps {
+export interface StudentProfileProps {
   student: StudentProfileData;
   onBack?: () => void;
   onMessage?: (student: StudentProfileData) => void;
+  onViewFullHistory?: () => void;
+}
+
+export interface BehavioralInsight {
+  id: string;
+  icon: "fast" | "review" | "resilience" | "methodical";
+  title: string;
+  description: string;
+}
+
+export interface QuizAttempt {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  timePerQuestion: string;
+  status: "PASSED" | "FAILED";
+}
+
+export interface BehavioralInsightsProps {
+  insights?: BehavioralInsight[];
+  quizAttempts?: QuizAttempt[];
   onViewFullHistory?: () => void;
 }
