@@ -417,6 +417,7 @@ export default function PerformanceAnalytics() {
                 </div>
               </div>
             </div>
+            
             {/* Class Activity Heatmap (3/5) */}
             <Card className="bg-white rounded-2xl shadow-none border border-border lg:col-span-3">
               <CardContent className="p-6">
