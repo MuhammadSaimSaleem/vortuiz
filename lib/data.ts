@@ -137,3 +137,35 @@ export interface BehavioralInsightsProps {
   quizAttempts?: QuizAttempt[];
   onViewFullHistory?: () => void;
 }
+
+export type ResourceFormat = "QUIZ" | "PDF" | "VIDEO" | "DOC" | "IMAGE" | "LESSON";
+export type SortOption = "recently_added" | "name_asc" | "name_desc" | "rating" | "oldest";
+export type ViewMode = "grid" | "list";
+export type ToastKind = "success" | "error" | "info";
+
+export interface Toast { id: string; message: string; kind: ToastKind; }
+
+export interface Folder {
+  id: string;
+  name: string;
+  color: string;
+  resourceIds: string[];
+  createdAt: Date;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  author: string;
+  subject: string;
+  grade: string;
+  format: ResourceFormat;
+  rating: number;
+  ratingCount: number;
+  coverColor: string;
+  coverEmoji: string;
+  folderId: string | null;
+  starred: boolean;
+  createdAt: Date;
+  tags: string[];
+}

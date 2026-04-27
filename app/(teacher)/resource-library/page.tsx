@@ -63,51 +63,21 @@ import {
   StarOff,
   Trash2,
   Upload,
-  Users,
   X,
   CheckCheck,
   AlertCircle,
   Sparkles,
   ArrowUpDown,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-type ResourceFormat = "QUIZ" | "PDF" | "VIDEO" | "DOC" | "IMAGE" | "LESSON";
-type SortOption = "recently_added" | "name_asc" | "name_desc" | "rating" | "oldest";
-type ViewMode = "grid" | "list";
-type ToastKind = "success" | "error" | "info";
-
-interface Toast { id: string; message: string; kind: ToastKind; }
-
-interface Folder {
-  id: string;
-  name: string;
-  color: string;
-  resourceIds: string[];
-  createdAt: Date;
-}
-
-interface Resource {
-  id: string;
-  title: string;
-  author: string;
-  subject: string;
-  grade: string;
-  format: ResourceFormat;
-  rating: number;
-  ratingCount: number;
-  coverColor: string;
-  coverEmoji: string;
-  folderId: string | null;
-  starred: boolean;
-  createdAt: Date;
-  tags: string[];
-}
+import type { Folder as FolderType } from "@/lib/data";
+import { Resource, ResourceFormat, SortOption, Toast, ToastKind, ViewMode } from "@/lib/data";
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-const INITIAL_FOLDERS: Folder[] = [
+const INITIAL_FOLDERS: FolderType[] = [
   { id: "f1", name: "Grade 9 Curriculum", color: "bg-blue-500",   resourceIds: ["r1", "r2"], createdAt: new Date("2024-01-10") },
   { id: "f2", name: "Science Unit",       color: "bg-emerald-500", resourceIds: ["r3"],       createdAt: new Date("2024-01-15") },
   { id: "f3", name: "Exam Prep",          color: "bg-purple-500",  resourceIds: [],            createdAt: new Date("2024-01-20") },
@@ -189,7 +159,7 @@ function ResourceCardGrid({
   resource, folders,
   onStar, onDelete, onDuplicate, onMove, onQuickView,
 }: {
-  resource: Resource; folders: Folder[];
+  resource: Resource; folders: FolderType[];
   onStar: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -230,7 +200,7 @@ function ResourceCardGrid({
               </Badge>
               <span className="text-[10px] text-slate-400 font-medium">{resource.grade}</span>
             </div>
-            <p className="text-sm font-bold text-brand-dark leading-tight line-clamp-2">{resource.title}</p>
+            <p className="text-sm font-bold text-brand-navy leading-tight line-clamp-2">{resource.title}</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -268,7 +238,7 @@ function ResourceCardList({
   resource, folders,
   onStar, onDelete, onDuplicate, onMove, onQuickView,
 }: {
-  resource: Resource; folders: Folder[];
+  resource: Resource; folders: FolderType[];
   onStar: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -285,7 +255,7 @@ function ResourceCardList({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-bold text-brand-dark truncate">{resource.title}</p>
+          <p className="text-sm font-bold text-brand-navy truncate">{resource.title}</p>
           <span className={`text-[10px] font-bold px-2 py-0 h-4 rounded-full flex items-center ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
         </div>
         <p className="text-xs text-brand-subtitle">By {resource.author} · {resource.subject} · {resource.grade}</p>
@@ -298,7 +268,7 @@ function ResourceCardList({
               <Eye className="h-3.5 w-3.5 text-slate-400" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="bg-brand-dark text-white border-none text-xs">Quick View</TooltipContent>
+          <TooltipContent className="bg-brand-navy text-white border-none text-xs">Quick View</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -306,7 +276,7 @@ function ResourceCardList({
               <Star className={`h-3.5 w-3.5 ${resource.starred ? "fill-amber-400 text-amber-400" : "text-slate-400"}`} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="bg-brand-dark text-white border-none text-xs">{resource.starred ? "Unstar" : "Star"}</TooltipContent>
+          <TooltipContent className="bg-brand-navy text-white border-none text-xs">{resource.starred ? "Unstar" : "Star"}</TooltipContent>
         </Tooltip>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -347,7 +317,7 @@ function QuickViewDialog({ resource, open, onClose }: { resource: Resource | nul
             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
             <span className="text-xs text-slate-400">{resource.subject} · {resource.grade}</span>
           </div>
-          <DialogTitle className="text-lg font-bold text-brand-dark mb-1">{resource.title}</DialogTitle>
+          <DialogTitle className="text-lg font-bold text-brand-navy mb-1">{resource.title}</DialogTitle>
           <p className="text-sm text-brand-subtitle mb-3">By {resource.author}</p>
           <StarRating rating={resource.rating} count={resource.ratingCount} />
           <div className="flex flex-wrap gap-1.5 mt-3">
@@ -372,7 +342,7 @@ function QuickViewDialog({ resource, open, onClose }: { resource: Resource | nul
 // ─── UploadDialog ─────────────────────────────────────────────────────────────
 function UploadDialog({ open, onClose, folders, onUpload }: {
   open: boolean; onClose: () => void;
-  folders: Folder[];
+  folders: FolderType[];
   onUpload: (r: Omit<Resource, "id" | "createdAt">) => void;
 }) {
   const [title,    setTitle]    = useState("");
@@ -401,7 +371,7 @@ function UploadDialog({ open, onClose, folders, onUpload }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-brand-dark font-bold">Upload Resource</DialogTitle>
+          <DialogTitle className="text-brand-navy font-bold">Upload Resource</DialogTitle>
           <DialogDescription>Add a new resource to your library.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 mt-2">
@@ -477,7 +447,7 @@ function UploadDialog({ open, onClose, folders, onUpload }: {
 // ─── FolderDialog ─────────────────────────────────────────────────────────────
 function FolderDialog({ open, onClose, folder, onSave }: {
   open: boolean; onClose: () => void;
-  folder: Folder | null;
+  folder: FolderType | null;
   onSave: (name: string, color: string) => void;
 }) {
   const [name,  setName]  = useState(folder?.name ?? "");
@@ -490,7 +460,7 @@ function FolderDialog({ open, onClose, folder, onSave }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-brand-dark font-bold">{folder ? "Rename Folder" : "Create New Folder"}</DialogTitle>
+          <DialogTitle className="text-brand-navy font-bold">{folder ? "Rename Folder" : "Create New Folder"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Folder name" className="h-10 rounded-xl" />
@@ -519,9 +489,10 @@ function FolderDialog({ open, onClose, folder, onSave }: {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ResourceLibrary() {
   const [resources, setResources] = useState<Resource[]>(INITIAL_RESOURCES);
-  const [folders,   setFolders]   = useState<Folder[]>(INITIAL_FOLDERS);
+  const [folders,   setFolders]   = useState<FolderType[]>(INITIAL_FOLDERS);
 
   // UI state
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [viewMode,        setViewMode]        = useState<ViewMode>("grid");
   const [search,          setSearch]          = useState("");
   const [sortBy,          setSortBy]          = useState<SortOption>("recently_added");
@@ -535,7 +506,7 @@ export default function ResourceLibrary() {
   const [uploadOpen,      setUploadOpen]      = useState(false);
   const [quickViewId,     setQuickViewId]     = useState<string | null>(null);
   const [folderDialogOpen,setFolderDialogOpen]= useState(false);
-  const [editingFolder,   setEditingFolder]   = useState<Folder | null>(null);
+  const [editingFolder,   setEditingFolder]   = useState<FolderType | null>(null);
   const [deleteTargetId,  setDeleteTargetId]  = useState<string | null>(null);
   const [deleteFolderId,  setDeleteFolderId]  = useState<string | null>(null);
 
@@ -618,7 +589,7 @@ export default function ResourceLibrary() {
       setFolders(prev => prev.map(f => f.id === editingFolder.id ? { ...f, name, color } : f));
       push("Folder updated");
     } else {
-      const f: Folder = { id: uid(), name, color, resourceIds: [], createdAt: new Date() };
+      const f: FolderType = { id: uid(), name, color, resourceIds: [], createdAt: new Date() };
       setFolders(prev => [...prev, f]);
       push("Folder created");
     }
@@ -644,338 +615,332 @@ export default function ResourceLibrary() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <TooltipProvider>
-      <div className="flex min-h-screen bg-surface">
-
-        {/* ── Left sidebar ── */}
-        <aside className="w-56 shrink-0 flex flex-col border-r border-border bg-white">
-          {/* Brand */}
-          <div className="px-5 pt-5 pb-4 border-b border-border">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-brand-navy flex items-center justify-center">
-                <BookOpen className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-brand-dark leading-tight">Resource Library</p>
-                <p className="text-[10px] text-brand-subtitle">Curated Materials</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Nav */}
-          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-            {/* Static items */}
-            {[
-              { id: "all",     icon: <Layers className="h-4 w-4" />,  label: "All Resources",  count: resources.length },
-              { id: "starred", icon: <Star   className="h-4 w-4" />,  label: "Starred",         count: resources.filter(r => r.starred).length },
-              { id: null,      icon: <File   className="h-4 w-4" />,  label: "Unorganised",    count: resources.filter(r => !r.folderId).length },
-            ].map(item => (
-              <button key={String(item.id)} onClick={() => setActiveFolderId(item.id as any)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  ${activeFolderId === item.id ? "bg-brand-light text-brand-navy border-l-2 border-brand-blue" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}>
-                <span className={activeFolderId === item.id ? "text-brand-blue" : "text-slate-400"}>{item.icon}</span>
-                <span className="flex-1 text-left">{item.label}</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFolderId === item.id ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-400"}`}>
-                  {item.count}
-                </span>
-              </button>
-            ))}
-
-            {/* Folders section */}
-            <div className="pt-3 pb-1">
-              <div className="flex items-center justify-between px-3 mb-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Folders</p>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingFolder(null); setFolderDialogOpen(true); }}>
-                      <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-brand-dark text-white border-none text-xs">New folder</TooltipContent>
-                </Tooltip>
-              </div>
-              {folders.map(folder => (
-                <div key={folder.id} className="group/folder flex items-center rounded-lg px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => setActiveFolderId(folder.id)}>
-                  <span className={`h-3 w-3 rounded-full ${folder.color} mr-2.5 shrink-0`} />
-                  <span className={`flex-1 text-sm font-medium truncate ${activeFolderId === folder.id ? "text-brand-navy" : "text-slate-500"}`}>
-                    {folder.name}
-                  </span>
-                  <span className="text-[10px] text-slate-400 mr-1">{folder.resourceIds.length}</span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/folder:opacity-100 shrink-0"
-                        onClick={e => e.stopPropagation()}>
-                        <MoreVertical className="h-3 w-3 text-slate-400" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-36">
-                      <DropdownMenuItem className="gap-2 text-xs" onClick={e => { e.stopPropagation(); setEditingFolder(folder); setFolderDialogOpen(true); }}>
-                        <Edit2 className="h-3.5 w-3.5" /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 text-xs text-red-500" onClick={e => { e.stopPropagation(); setDeleteFolderId(folder.id); }}>
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
-            </div>
-          </nav>
-
-          {/* Filter panel */}
-          <div className={`shrink-0 bg-white transition-all duration-300 overflow-hidden ${filtersOpen ? "w-52" : "w-0"}`}>
-            <div className="w-52 p-4 space-y-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-brand-dark">Filters</p>
-                {hasFilters && (
-                  <button onClick={clearFilters} className="text-[11px] font-semibold text-brand-blue hover:opacity-80">
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {/* Subject */}
-              <div>
-                <p className="text-xs font-bold text-brand-dark mb-2.5">Subject</p>
-                <div className="space-y-2">
-                  {allSubjects.map(s => (
-                    <div key={s} className="flex items-center gap-2">
-                      <Checkbox id={`s-${s}`} checked={filterSubjects.includes(s)} onCheckedChange={() => toggleSubject(s)}
-                        className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
-                      <label htmlFor={`s-${s}`} className="text-sm text-slate-600 cursor-pointer select-none">{s}</label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Grade */}
-              <div>
-                <p className="text-xs font-bold text-brand-dark mb-2.5">Grade Level</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {allGrades.map(g => (
-                    <button key={g} onClick={() => toggleGrade(g)}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors
-                        ${filterGrades.includes(g) ? "bg-brand-navy text-white border-brand-navy" : "border-border text-slate-500 hover:border-brand-blue"}`}>
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Format */}
-              <div>
-                <p className="text-xs font-bold text-brand-dark mb-2.5">Format</p>
-                <div className="space-y-2">
-                  {allFormats.map(f => {
-                    const fmt = formatConfig[f];
-                    return (
-                      <div key={f} className="flex items-center gap-2">
-                        <Checkbox id={`f-${f}`} checked={filterFormats.includes(f)} onCheckedChange={() => toggleFormat(f)}
-                          className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
-                        <label htmlFor={`f-${f}`} className="text-sm cursor-pointer select-none flex items-center gap-1.5">
-                          <span className={`text-[10px] font-bold px-1.5 py-0 rounded ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom */}
-          <div className="border-t border-border p-3 space-y-0.5">
-            <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
-              <Settings className="h-4 w-4" /> Settings
-            </button>
-            <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
-              <HelpCircle className="h-4 w-4" /> Help
-            </button>
-            <Button className="w-full mt-2 bg-brand-navy hover:bg-brand-blue text-white font-semibold text-sm rounded-xl h-10 gap-1.5 transition-colors"
-              onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4" /> Upload
-            </Button>
-          </div>
-        </aside>
-
-        {/* ── Main content ── */}
-        <div className="flex-1 flex overflow-hidden">
-
-          {/* Content area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Sub-header */}
-            <div className="border-b border-border bg-white px-6 py-4 flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-xl font-bold text-brand-dark">Browse Resources</h1>
-                <p className="text-xs text-brand-subtitle mt-0.5">
-                  Discover high-quality materials from your collection and shared hubs.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Search */}
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <Input value={search} onChange={e => setSearch(e.target.value)}
-                    placeholder="Search resources…"
-                    className="h-9 pl-9 text-sm bg-slate-50 border-border focus-visible:ring-brand-blue rounded-xl" />
-                  {search && (
-                    <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Filter toggle */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className={`h-9 w-9 border-border rounded-xl ${filtersOpen ? "bg-brand-light border-brand-blue" : ""}`}
-                      onClick={() => setFiltersOpen(p => !p)}>
-                      <SlidersHorizontal className={`h-4 w-4 ${filtersOpen ? "text-brand-blue" : "text-slate-400"}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-brand-dark text-white border-none text-xs">Toggle filters</TooltipContent>
-                </Tooltip>
-
-                {/* View toggle */}
-                <div className="flex items-center border border-border rounded-xl overflow-hidden h-9">
-                  <button onClick={() => setViewMode("grid")}
-                    className={`px-2.5 h-full flex items-center transition-colors ${viewMode === "grid" ? "bg-brand-light text-brand-blue" : "text-slate-400 hover:bg-slate-50"}`}>
-                    <Grid3X3 className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setViewMode("list")}
-                    className={`px-2.5 h-full flex items-center border-l border-border transition-colors ${viewMode === "list" ? "bg-brand-light text-brand-blue" : "text-slate-400 hover:bg-slate-50"}`}>
-                    <LayoutList className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Sort */}
-                <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
-                  <SelectTrigger className="h-9 text-sm border-border rounded-xl w-44 focus:ring-brand-blue gap-1">
-                    <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recently_added">Recently Added</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="name_asc">Name A–Z</SelectItem>
-                    <SelectItem value="name_desc">Name Z–A</SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Active filter chips */}
-            {hasFilters && (
-              <div className="px-6 py-2 flex items-center gap-2 flex-wrap bg-white border-b border-border">
-                {filterSubjects.map(s => (
-                  <span key={s} className="flex items-center gap-1 text-xs font-medium bg-brand-light text-brand-blue px-2.5 py-1 rounded-full">
-                    {s} <button onClick={() => toggleSubject(s)}><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
-                {filterGrades.map(g => (
-                  <span key={g} className="flex items-center gap-1 text-xs font-medium bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full">
-                    {g} <button onClick={() => toggleGrade(g)}><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
-                {filterFormats.map(f => (
-                  <span key={f} className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${formatConfig[f].bg} ${formatConfig[f].color}`}>
-                    {f} <button onClick={() => toggleFormat(f)}><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Resource grid/list */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3">
-                  <div className="h-14 w-14 rounded-2xl bg-brand-light flex items-center justify-center">
-                    <Search className="h-7 w-7 text-brand-blue" />
+      <div>
+        <div className="flex min-h-screen bg-surface">
+          {/* ── Left sidebar ── */}
+          <div className="relative">
+            <aside className={`relative z-20 flex flex-col border-r border-border bg-white transition-all duration-300 ease-in-out
+              ${sidebarOpen ? "w-64" : "w-0 -translate-x-56"}`}>
+              {/* Brand */}
+              <div className="px-5 pt-6 pb-5.25 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-brand-navy flex items-center justify-center">
+                    <BookOpen className="h-4 w-4 text-white" />
                   </div>
-                  <p className="text-sm font-semibold text-brand-dark">No resources found</p>
-                  <p className="text-xs text-brand-subtitle">Try adjusting your filters or search term</p>
-                  {hasFilters && <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-xl text-xs">Clear filters</Button>}
+                  <div>
+                    <p className="text-sm font-bold text-brand-navy leading-tight">Resource Library</p>
+                    <p className="text-[10px] text-brand-subtitle">Curated Materials</p>
+                  </div>
                 </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filtered.map(r => (
-                    <ResourceCardGrid key={r.id} resource={r} folders={folders}
-                      onStar={handleStar} onDelete={id => setDeleteTargetId(id)}
-                      onDuplicate={handleDuplicate} onMove={handleMove}
-                      onQuickView={id => setQuickViewId(id)} />
-                  ))}
-                  {/* Add new card */}
-                  <button onClick={() => setUploadOpen(true)}
-                    className="rounded-2xl border-2 border-dashed border-border bg-white flex flex-col items-center justify-center gap-3 min-h-55 hover:border-brand-blue hover:bg-brand-light transition-all group">
-                    <div className="h-12 w-12 rounded-2xl bg-slate-100 group-hover:bg-white flex items-center justify-center transition-colors">
-                      <Plus className="h-6 w-6 text-slate-400 group-hover:text-brand-blue" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-slate-500 group-hover:text-brand-dark">Add New Resource</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Upload a document, quiz,<br />or multimedia file.</p>
-                    </div>
+              </div>
+              {/* Nav */}
+              <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+                {/* Static items */}
+                {[
+                  { id: "all",     icon: <Layers className="h-4 w-4" />,  label: "All Resources",  count: resources.length },
+                  { id: "starred", icon: <Star   className="h-4 w-4" />,  label: "Starred",         count: resources.filter(r => r.starred).length },
+                  { id: null,      icon: <File   className="h-4 w-4" />,  label: "Unorganised",    count: resources.filter(r => !r.folderId).length },
+                ].map(item => (
+                  <button key={String(item.id)} onClick={() => setActiveFolderId(item.id as any)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                      ${activeFolderId === item.id ? "bg-brand-light text-brand-navy border-l-2 border-brand-blue" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}>
+                    <span className={activeFolderId === item.id ? "text-brand-blue" : "text-slate-400"}>{item.icon}</span>
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFolderId === item.id ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-400"}`}>
+                      {item.count}
+                    </span>
                   </button>
+                ))}
+                {/* Folders section */}
+                <div className="pt-3 pb-1">
+                  <div className="flex items-center justify-between px-3 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Folders</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingFolder(null); setFolderDialogOpen(true); }}>
+                          <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-brand-navy text-white border-none text-xs">New folder</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {folders.map(folder => (
+                    <div key={folder.id} className="group/folder flex items-center rounded-lg px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => setActiveFolderId(folder.id)}>
+                      <span className={`h-3 w-3 rounded-full ${folder.color} mr-2.5 shrink-0`} />
+                      <span className={`flex-1 text-sm font-medium truncate ${activeFolderId === folder.id ? "text-brand-navy" : "text-slate-500"}`}>
+                        {folder.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 mr-1">{folder.resourceIds.length}</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/folder:opacity-100 shrink-0"
+                            onClick={e => e.stopPropagation()}>
+                            <MoreVertical className="h-3 w-3 text-slate-400" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem className="gap-2 text-xs" onClick={e => { e.stopPropagation(); setEditingFolder(folder); setFolderDialogOpen(true); }}>
+                            <Edit2 className="h-3.5 w-3.5" /> Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2 text-xs text-red-500" onClick={e => { e.stopPropagation(); setDeleteFolderId(folder.id); }}>
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ))}
                 </div>
+              </nav>
+              {/* Filter panel */}
+              <div className={`shrink-0 bg-white transition-all duration-300 overflow-hidden ${filtersOpen ? "w-52" : "w-0"}`}>
+                <div className="w-52 p-4 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-brand-navy">Filters</p>
+                    {hasFilters && (
+                      <button onClick={clearFilters} className="text-[11px] font-semibold text-brand-blue hover:opacity-80">
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                  {/* Subject */}
+                  <div>
+                    <p className="text-xs font-bold text-brand-navy mb-2.5">Subject</p>
+                    <div className="space-y-2">
+                      {allSubjects.map(s => (
+                        <div key={s} className="flex items-center gap-2">
+                          <Checkbox id={`s-${s}`} checked={filterSubjects.includes(s)} onCheckedChange={() => toggleSubject(s)}
+                            className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
+                          <label htmlFor={`s-${s}`} className="text-sm text-slate-600 cursor-pointer select-none">{s}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Grade */}
+                  <div>
+                    <p className="text-xs font-bold text-brand-navy mb-2.5">Grade Level</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allGrades.map(g => (
+                        <button key={g} onClick={() => toggleGrade(g)}
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors
+                            ${filterGrades.includes(g) ? "bg-brand-navy text-white border-brand-navy" : "border-border text-slate-500 hover:border-brand-blue"}`}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Format */}
+                  <div>
+                    <p className="text-xs font-bold text-brand-navy mb-2.5">Format</p>
+                    <div className="space-y-2">
+                      {allFormats.map(f => {
+                        const fmt = formatConfig[f];
+                        return (
+                          <div key={f} className="flex items-center gap-2">
+                            <Checkbox id={`f-${f}`} checked={filterFormats.includes(f)} onCheckedChange={() => toggleFormat(f)}
+                              className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
+                            <label htmlFor={`f-${f}`} className="text-sm cursor-pointer select-none flex items-center gap-1.5">
+                              <span className={`text-[10px] font-bold px-1.5 py-0 rounded ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Bottom */}
+              <div className="border-t border-border p-3 space-y-0.5">
+                <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
+                  <Settings className="h-4 w-4" /> Settings
+                </button>
+                <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
+                  <HelpCircle className="h-4 w-4" /> Help
+                </button>
+                <Button className="w-full mt-2 bg-brand-navy hover:bg-brand-blue text-white font-semibold text-sm rounded-xl h-10 gap-1.5 transition-colors"
+                  onClick={() => setUploadOpen(true)}>
+                  <Upload className="h-4 w-4" /> Upload
+                </Button>
+              </div>
+            </aside>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`absolute top-6 z-1000 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white shadow-sm transition-all duration-300 hover:bg-slate-50
+                ${sidebarOpen ? "left-68" : "left-4"}`}
+            >
+              {sidebarOpen ? (
+                <ArrowLeft className="h-4 w-4 text-slate-600" />
               ) : (
-                <div className="space-y-2">
-                  {filtered.map(r => (
-                    <ResourceCardList key={r.id} resource={r} folders={folders}
-                      onStar={handleStar} onDelete={id => setDeleteTargetId(id)}
-                      onDuplicate={handleDuplicate} onMove={handleMove}
-                      onQuickView={id => setQuickViewId(id)} />
+                <ArrowRight className="h-4 w-4 text-slate-600" />
+              )}
+            </button>
+          </div>
+
+          {/* ── Main content ── */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Content area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Sub-header */}
+              <div className="border-b border-border bg-white px-6 py-4 flex items-center justify-between gap-4">
+                <div className="ml-10">
+                  <h1 className="text-xl font-bold text-brand-navy">Browse Resources</h1>
+                  <p className="text-xs text-brand-subtitle mt-0.5">
+                    Discover high-quality materials from your collection and shared hubs.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Search */}
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <Input value={search} onChange={e => setSearch(e.target.value)}
+                      placeholder="Search resources…"
+                      className="h-9 pl-9 text-sm bg-slate-50 border-border focus-visible:ring-brand-blue rounded-xl" />
+                    {search && (
+                      <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {/* Filter toggle */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" className={`h-9 w-9 border-border rounded-xl ${filtersOpen ? "bg-brand-light border-brand-blue" : ""}`}
+                        onClick={() => setFiltersOpen(p => !p)}>
+                        <SlidersHorizontal className={`h-4 w-4 ${filtersOpen ? "text-brand-blue" : "text-slate-400"}`} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-brand-navy text-white border-none text-xs">Toggle filters</TooltipContent>
+                  </Tooltip>
+                  {/* View toggle */}
+                  <div className="flex items-center border border-border rounded-xl overflow-hidden h-9">
+                    <button onClick={() => setViewMode("grid")}
+                      className={`px-2.5 h-full flex items-center transition-colors ${viewMode === "grid" ? "bg-brand-light text-brand-blue" : "text-slate-400 hover:bg-slate-50"}`}>
+                      <Grid3X3 className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setViewMode("list")}
+                      className={`px-2.5 h-full flex items-center border-l border-border transition-colors ${viewMode === "list" ? "bg-brand-light text-brand-blue" : "text-slate-400 hover:bg-slate-50"}`}>
+                      <LayoutList className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {/* Sort */}
+                  <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
+                    <SelectTrigger className="h-9 text-sm border-border rounded-xl w-44 focus:ring-brand-blue gap-1">
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="recently_added">Recently Added</SelectItem>
+                      <SelectItem value="oldest">Oldest First</SelectItem>
+                      <SelectItem value="name_asc">Name A–Z</SelectItem>
+                      <SelectItem value="name_desc">Name Z–A</SelectItem>
+                      <SelectItem value="rating">Highest Rated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Active filter chips */}
+              {hasFilters && (
+                <div className="px-6 py-2 flex items-center gap-2 flex-wrap bg-white border-b border-border">
+                  {filterSubjects.map(s => (
+                    <span key={s} className="flex items-center gap-1 text-xs font-medium bg-brand-light text-brand-blue px-2.5 py-1 rounded-full">
+                      {s} <button onClick={() => toggleSubject(s)}><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                  {filterGrades.map(g => (
+                    <span key={g} className="flex items-center gap-1 text-xs font-medium bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full">
+                      {g} <button onClick={() => toggleGrade(g)}><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                  {filterFormats.map(f => (
+                    <span key={f} className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${formatConfig[f].bg} ${formatConfig[f].color}`}>
+                      {f} <button onClick={() => toggleFormat(f)}><X className="h-3 w-3" /></button>
+                    </span>
                   ))}
                 </div>
               )}
+              {/* Resource grid/list */}
+              <div className="flex w-full overflow-y-auto p-6 max-w-7xl mx-auto">
+                {filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 gap-3">
+                    <div className="h-14 w-14 rounded-2xl bg-brand-light flex items-center justify-center">
+                      <Search className="h-7 w-7 text-brand-blue" />
+                    </div>
+                    <p className="text-sm font-semibold text-brand-navy">No resources found</p>
+                    <p className="text-xs text-brand-subtitle">Try adjusting your filters or search term</p>
+                    {hasFilters && <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-xl text-xs">Clear filters</Button>}
+                  </div>
+                ) : viewMode === "grid" ? (
+                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                    {filtered.map(r => (
+                      <ResourceCardGrid key={r.id} resource={r} folders={folders}
+                        onStar={handleStar} onDelete={id => setDeleteTargetId(id)}
+                        onDuplicate={handleDuplicate} onMove={handleMove}
+                        onQuickView={id => setQuickViewId(id)} />
+                    ))}
+                    {/* Add new card */}
+                    <button onClick={() => setUploadOpen(true)}
+                      className="rounded-2xl border-2 border-dashed border-border bg-white flex flex-col items-center justify-center gap-3 min-h-55 hover:border-brand-blue hover:bg-brand-light transition-all group">
+                      <div className="h-12 w-12 rounded-2xl bg-slate-100 group-hover:bg-white flex items-center justify-center transition-colors">
+                        <Plus className="h-6 w-6 text-slate-400 group-hover:text-brand-blue" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-slate-500 group-hover:text-brand-navy">Add New Resource</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Upload a document, quiz,<br />or multimedia file.</p>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filtered.map(r => (
+                      <ResourceCardList key={r.id} resource={r} folders={folders}
+                        onStar={handleStar} onDelete={id => setDeleteTargetId(id)}
+                        onDuplicate={handleDuplicate} onMove={handleMove}
+                        onQuickView={id => setQuickViewId(id)} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+        {/* ── Dialogs ── */}
+        <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} folders={folders} onUpload={handleUpload} />
+        <QuickViewDialog resource={quickViewResource} open={!!quickViewId} onClose={() => setQuickViewId(null)} />
+        <FolderDialog
+          open={folderDialogOpen}
+          onClose={() => { setFolderDialogOpen(false); setEditingFolder(null); }}
+          folder={editingFolder}
+          onSave={handleCreateFolder}
+        />
+        {/* Delete resource confirm */}
+        <Dialog open={!!deleteTargetId} onOpenChange={v => !v && setDeleteTargetId(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-brand-navy">Delete resource?</DialogTitle>
+              <DialogDescription>This action cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteTargetId(null)}>Cancel</Button>
+              <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={() => deleteTargetId && handleDelete(deleteTargetId)}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Delete folder confirm */}
+        <Dialog open={!!deleteFolderId} onOpenChange={v => !v && setDeleteFolderId(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-brand-navy">Delete folder?</DialogTitle>
+              <DialogDescription>Resources inside will become unorganised. This cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteFolderId(null)}>Cancel</Button>
+              <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={() => deleteFolderId && handleDeleteFolder(deleteFolderId)}>Delete Folder</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <ToastContainer toasts={toasts} dismiss={dismiss} />
       </div>
-
-      {/* ── Dialogs ── */}
-      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} folders={folders} onUpload={handleUpload} />
-      <QuickViewDialog resource={quickViewResource} open={!!quickViewId} onClose={() => setQuickViewId(null)} />
-
-      <FolderDialog
-        open={folderDialogOpen}
-        onClose={() => { setFolderDialogOpen(false); setEditingFolder(null); }}
-        folder={editingFolder}
-        onSave={handleCreateFolder}
-      />
-
-      {/* Delete resource confirm */}
-      <Dialog open={!!deleteTargetId} onOpenChange={v => !v && setDeleteTargetId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-brand-dark">Delete resource?</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTargetId(null)}>Cancel</Button>
-            <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={() => deleteTargetId && handleDelete(deleteTargetId)}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete folder confirm */}
-      <Dialog open={!!deleteFolderId} onOpenChange={v => !v && setDeleteFolderId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-brand-dark">Delete folder?</DialogTitle>
-            <DialogDescription>Resources inside will become unorganised. This cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteFolderId(null)}>Cancel</Button>
-            <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={() => deleteFolderId && handleDeleteFolder(deleteFolderId)}>Delete Folder</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
-    </TooltipProvider>
   );
 }
 
