@@ -83,7 +83,7 @@ function CircleProgress({ value }: { value: number }) {
   );
 }
 
-export default function TeacherView() {
+export default function TeacherDashboard() {
   const [search, setSearch] = useState("");
 
   return (

@@ -1,5 +1,7 @@
 // types.ts
 
+import { BehavioralInsight } from "@/app/student-directory/_components/BehavioralInsights";
+
 /**
  * AUTH & USER ROLES
  * Used for sidebar logic and route protection.
@@ -82,3 +84,47 @@ export interface NavItem {
  * For the "Upgrade Now" sidebar card.
  */
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
+
+
+export interface SkillScore {
+  subject: string;
+  score: number;
+}
+
+export interface StudentProfileData {
+  // Identity
+  id: string;
+  name: string;
+  initials: string;
+  avatar?: string;
+  email?: string;
+  parent?: string;
+  groups?: string[];
+
+  // Meta
+  studentId: string;
+  enrolled?: string;
+
+  // Performance
+  overallPercentile: number;
+  percentileDelta?: number;
+  topPercentile?: number;
+  accuracyStudent?: number;
+  accuracyClass?: number;
+  topSubject?: string;
+  topSubjectPercentile?: number;
+
+  // Skills breakdown
+  skills?: SkillScore[];
+
+  // Behavioral section
+  insights?: BehavioralInsight[];
+  quizAttempts?: QuizAttempt[];
+}
+
+interface StudentProfileProps {
+  student: StudentProfileData;
+  onBack?: () => void;
+  onMessage?: (student: StudentProfileData) => void;
+  onViewFullHistory?: () => void;
+}

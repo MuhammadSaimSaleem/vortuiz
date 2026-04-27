@@ -43,6 +43,7 @@ import {
   CalendarDays,
   IdCard,
 } from "lucide-react";
+import BehavioralInsights from "./BehavioralInsights";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,6 @@ export interface StudentProfileData {
     title: string;
     body: string;
   }[];
-  
   quizAttempts: {
     title: string;
     subtitle: string;
@@ -424,135 +424,8 @@ export default function StudentProfile({
 
       {/* ── Behavioral Insights ─────────────────────────────────────────────── */}
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
-          <span className="w-7 h-7 rounded-lg bg-brand-light flex items-center justify-center">
-            <Target className="w-4 h-4 text-brand-blue" />
-          </span>
-          Behavioral Insights
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {student.insights.map((insight, i) => {
-            const meta = insightMeta[insight.icon];
-            return (
-              <Card
-                key={i}
-                className={`rounded-2xl shadow-none border ${meta.bg}`}
-              >
-                <CardContent className="px-4 py-4">
-                  <span
-                    className={`w-9 h-9 rounded-xl ${meta.iconBg} flex items-center justify-center ${meta.color} mb-3`}
-                  >
-                    {meta.icon}
-                  </span>
-                  <p className={`font-bold text-sm mb-1 ${meta.color}`}>
-                    {insight.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {insight.body}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <BehavioralInsights />
       </div>
-
-      {/* ── Recent Quiz Attempts ─────────────────────────────────────────────── */}
-      <Card className="bg-white rounded-2xl shadow-none">
-        <CardContent className="px-6 py-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">
-              Recent Quiz Attempts
-            </h2>
-            <Button
-              variant="ghost"
-              className="text-brand-blue text-sm font-semibold hover:bg-brand-light"
-            >
-              View Full History →
-            </Button>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-border">
-                {["Quiz Title", "Date", "Score", "Time/Question", "Status"].map(
-                  (h) => (
-                    <TableHead
-                      key={h}
-                      className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
-                    >
-                      {h}
-                    </TableHead>
-                  )
-                )}
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {student.quizAttempts.map((attempt, i) => (
-                <TableRow
-                  key={i}
-                  className="border-b border-border last:border-0 hover:bg-brand-light/40 transition-colors"
-                >
-                  <TableCell className="py-4">
-                    <p className="font-semibold text-[14px] text-foreground">
-                      {attempt.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {attempt.subtitle}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-sm text-foreground">
-                    {attempt.date}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-bold text-[15px] text-foreground">
-                      {attempt.score}
-                    </p>
-                    <p
-                      className={`text-xs font-semibold mt-0.5 ${attempt.scorePercent >= 70 ? "text-green-500" : "text-red-500"}`}
-                    >
-                      {attempt.scorePercent.toFixed(1)}%
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-sm text-foreground">
-                    {attempt.timePerQuestion}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                        attempt.status === "PASSED"
-                          ? "bg-green-100 text-green-700 border-green-200"
-                          : "bg-red-100 text-red-600 border-red-200"
-                      }`}
-                      variant="outline"
-                    >
-                      {attempt.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Download Report</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {/* ── Message Dialog (standalone fallback) ──────────────────────────── */}
       <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
