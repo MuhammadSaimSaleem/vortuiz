@@ -51,10 +51,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import TopBar from "@/components/ui/Topbar";
 import StudentProfile from "./_components/StudentProfile";
 import type { StudentProfileData } from "./_components/StudentProfile";
-import Topbar from "@/components/ui/Topbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -487,7 +485,6 @@ export default function StudentRoster() {
     const student = students.find((s) => s.id === view.studentId)!;
     return (
       <div className="min-h-screen bg-surface font-sans">
-        <TopBar />
         <StudentProfile
           student={toProfileData(student)}
           onBack={() => setView({ type: "roster" })}
@@ -501,11 +498,7 @@ export default function StudentRoster() {
     );
   }
 
-  return (
-    <div>
-          
-      <Topbar />
-        
+  return (        
       <div className="min-h-screen bg-surface font-sans flex flex-col ">
         <div className="p-6 flex flex-col max-w-7xl mx-auto w-full">
 
@@ -824,7 +817,7 @@ export default function StudentRoster() {
                   <div className="flex items-end justify-between">
                     <div>
                       <p
-                        className={`text-3xl font-bold ${stat.valueColor ?? "text-foreground"}`}
+                        className={`text-3xl font-bold ${stat.valueColor ?? "text-brand-navy"}`}
                       >
                         {stat.value}
                       </p>
@@ -1004,6 +997,5 @@ export default function StudentRoster() {
           )}
         </Dialog>
       </div>
-    </div>
   );
 }

@@ -23,7 +23,6 @@ import {
   Users,
   ClipboardList,
 } from "lucide-react";
-import TopBar from "@/components/ui/Topbar";
 
 // --- Types ---
 type QuizStatus = "ACTIVE" | "DRAFT";
@@ -88,8 +87,6 @@ export default function TeacherDashboard() {
 
   return (
     <div className="bg-surface flex-1 flex flex-col min-h-screen">
-      {/* Top bar */}
-      <TopBar/>
 
       {/* Main Content */}
       <main className="p-8 max-w-400 mx-auto w-full space-y-8">

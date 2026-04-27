@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/ui/Sidebar";
+import TopBar from "@/components/ui/Topbar";
 
 export default function RootLayout({
   children,
@@ -10,7 +11,10 @@ export default function RootLayout({
       <div className="flex-none w-fit">
         <Sidebar />
       </div>
-      <div className="grow md:overflow-y-auto">{children}</div>
+      <div className="w-full flex flex-col">
+        <TopBar />
+        <div className="grow md:overflow-y-auto">{children}</div>
+      </div>
     </div>
   );
 }

@@ -25,7 +25,7 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
   showActions?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-white px-6">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-white px-6 py-2">
       <div className="relative w-80">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <Input placeholder="Search quizzes or topics..."

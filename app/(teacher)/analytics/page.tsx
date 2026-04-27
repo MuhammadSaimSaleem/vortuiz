@@ -21,7 +21,6 @@ import {
   Users,
   Trophy,
 } from "lucide-react";
-import Topbar from "@/components/ui/Topbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -193,10 +192,6 @@ export default function PerformanceAnalytics() {
   }), []);
 
   return (
-    <div>
-      
-      <Topbar/>
-      
       <div className="min-h-screen bg-surface font-sans flex flex-col items-center">
         <div className="p-6 flex max-w-7xl flex-col gap-6">
           {/* ── Page Header ─────────────────────────────────────────────────────── */}
@@ -457,6 +452,5 @@ export default function PerformanceAnalytics() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
