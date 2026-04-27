@@ -66,6 +66,7 @@ export interface StudentProfileData {
     title: string;
     body: string;
   }[];
+  
   quizAttempts: {
     title: string;
     subtitle: string;
