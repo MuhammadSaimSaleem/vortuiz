@@ -193,7 +193,7 @@ export default function PerformanceAnalytics() {
 
   return (
       <div className="min-h-screen bg-surface font-sans flex flex-col items-center">
-        <div className="p-6 flex max-w-7xl flex-col gap-6">
+        <div className="p-6 flex max-w-400 flex-col gap-6">
           {/* ── Page Header ─────────────────────────────────────────────────────── */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>

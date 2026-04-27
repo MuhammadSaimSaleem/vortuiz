@@ -500,7 +500,7 @@ export default function StudentRoster() {
 
   return (        
       <div className="min-h-screen bg-surface font-sans flex flex-col ">
-        <div className="p-6 flex flex-col max-w-7xl mx-auto w-full">
+        <div className="p-6 flex flex-col max-w-400 mx-auto w-full">
 
           {/* Header */}
           <div className="mb-6">
@@ -707,7 +707,7 @@ export default function StudentRoster() {
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="min-w-40">
                             <DropdownMenuItem onClick={() => setView({ type: "profile", studentId: student.id })}>
                               View Profile
                             </DropdownMenuItem>

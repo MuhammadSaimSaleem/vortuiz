@@ -178,7 +178,7 @@ function ResourceCardGrid({
         </span>
         {/* Star */}
         <button onClick={() => onStar(resource.id)}
-          className="absolute top-2.5 left-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          className="absolute top-2.5 left-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <Star className={`h-4 w-4 ${resource.starred ? "fill-amber-400 text-amber-400" : "text-white/70 hover:text-amber-300"}`} />
         </button>
         {/* Quick view overlay */}
@@ -619,7 +619,7 @@ export default function ResourceLibrary() {
         <div className="flex min-h-screen bg-surface">
           {/* ── Left sidebar ── */}
           <div className="relative">
-            <aside className={`relative z-20 flex flex-col border-r border-border bg-white transition-all duration-300 ease-in-out
+            <aside className={`relative z-20 h-full flex flex-col border-r border-border bg-white transition-all duration-300 ease-in-out
               ${sidebarOpen ? "w-64" : "w-0 -translate-x-56"}`}>
               {/* Brand */}
               <div className="px-5 pt-6 pb-5.25 border-b border-border">
@@ -634,7 +634,7 @@ export default function ResourceLibrary() {
                 </div>
               </div>
               {/* Nav */}
-              <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+              <nav className={`p-3 space-y-0.5 overflow-y-auto ${filtersOpen ? "flex-none" : "flex-1"}`}>
                 {/* Static items */}
                 {[
                   { id: "all",     icon: <Layers className="h-4 w-4" />,  label: "All Resources",  count: resources.length },
@@ -692,64 +692,66 @@ export default function ResourceLibrary() {
                     </div>
                   ))}
                 </div>
-              </nav>
-              {/* Filter panel */}
-              <div className={`shrink-0 bg-white transition-all duration-300 overflow-hidden ${filtersOpen ? "w-52" : "w-0"}`}>
-                <div className="w-52 p-4 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-brand-navy">Filters</p>
-                    {hasFilters && (
-                      <button onClick={clearFilters} className="text-[11px] font-semibold text-brand-blue hover:opacity-80">
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                  {/* Subject */}
-                  <div>
-                    <p className="text-xs font-bold text-brand-navy mb-2.5">Subject</p>
-                    <div className="space-y-2">
-                      {allSubjects.map(s => (
-                        <div key={s} className="flex items-center gap-2">
-                          <Checkbox id={`s-${s}`} checked={filterSubjects.includes(s)} onCheckedChange={() => toggleSubject(s)}
-                            className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
-                          <label htmlFor={`s-${s}`} className="text-sm text-slate-600 cursor-pointer select-none">{s}</label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Grade */}
-                  <div>
-                    <p className="text-xs font-bold text-brand-navy mb-2.5">Grade Level</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {allGrades.map(g => (
-                        <button key={g} onClick={() => toggleGrade(g)}
-                          className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors
-                            ${filterGrades.includes(g) ? "bg-brand-navy text-white border-brand-navy" : "border-border text-slate-500 hover:border-brand-blue"}`}>
-                          {g}
+
+                {/* Filter panel */}
+                <div className={`shrink-0 mb-10 bg-white transition-all duration-300 overflow-hidden ${filtersOpen ? "w-52" : "w-0"}`}>
+                  <div className="w-52 p-4 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-brand-navy">Filters</p>
+                      {hasFilters && (
+                        <button onClick={clearFilters} className="text-[11px] font-semibold text-brand-blue hover:opacity-80">
+                          Clear all
                         </button>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                  {/* Format */}
-                  <div>
-                    <p className="text-xs font-bold text-brand-navy mb-2.5">Format</p>
-                    <div className="space-y-2">
-                      {allFormats.map(f => {
-                        const fmt = formatConfig[f];
-                        return (
-                          <div key={f} className="flex items-center gap-2">
-                            <Checkbox id={`f-${f}`} checked={filterFormats.includes(f)} onCheckedChange={() => toggleFormat(f)}
+                    {/* Subject */}
+                    <div>
+                      <p className="text-xs font-bold text-brand-navy mb-2.5">Subject</p>
+                      <div className="space-y-2">
+                        {allSubjects.map(s => (
+                          <div key={s} className="flex items-center gap-2">
+                            <Checkbox id={`s-${s}`} checked={filterSubjects.includes(s)} onCheckedChange={() => toggleSubject(s)}
                               className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
-                            <label htmlFor={`f-${f}`} className="text-sm cursor-pointer select-none flex items-center gap-1.5">
-                              <span className={`text-[10px] font-bold px-1.5 py-0 rounded ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
-                            </label>
+                            <label htmlFor={`s-${s}`} className="text-sm text-slate-600 cursor-pointer select-none">{s}</label>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    </div>
+                    {/* Grade */}
+                    <div>
+                      <p className="text-xs font-bold text-brand-navy mb-2.5">Grade Level</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {allGrades.map(g => (
+                          <button key={g} onClick={() => toggleGrade(g)}
+                            className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors
+                              ${filterGrades.includes(g) ? "bg-brand-navy text-white border-brand-navy" : "border-border text-slate-500 hover:border-brand-blue"}`}>
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Format */}
+                    <div>
+                      <p className="text-xs font-bold text-brand-navy mb-2.5">Format</p>
+                      <div className="space-y-2">
+                        {allFormats.map(f => {
+                          const fmt = formatConfig[f];
+                          return (
+                            <div key={f} className="flex items-center gap-2">
+                              <Checkbox id={`f-${f}`} checked={filterFormats.includes(f)} onCheckedChange={() => toggleFormat(f)}
+                                className="data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy" />
+                              <label htmlFor={`f-${f}`} className="text-sm cursor-pointer select-none flex items-center gap-1.5">
+                                <span className={`text-[10px] font-bold px-1.5 py-0 rounded ${fmt.bg} ${fmt.color}`}>{fmt.label}</span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </nav>
+              
               {/* Bottom */}
               <div className="border-t border-border p-3 space-y-0.5">
                 <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
@@ -860,7 +862,7 @@ export default function ResourceLibrary() {
                 </div>
               )}
               {/* Resource grid/list */}
-              <div className="flex w-full overflow-y-auto p-6 max-w-7xl mx-auto">
+              <div className="flex w-full overflow-y-auto p-6 max-w-400 mx-auto">
                 {filtered.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-brand-light flex items-center justify-center">

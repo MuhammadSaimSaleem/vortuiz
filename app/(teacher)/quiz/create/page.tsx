@@ -788,7 +788,7 @@ export default function QuizBuilderPage() {
 
         {/* ── Builder ── */}
         {step === "builder" && selectedSubject && (
-          <div className="flex-1 max-w-300 mx-auto w-full px-6 py-6 grid grid-cols-[1fr_300px] gap-6 items-start">
+          <div className="flex-1 max-w-400 mx-auto w-full px-6 py-6 grid grid-cols-[1fr_300px] gap-6 items-start">
             <div className="space-y-6">
               {/* Breadcrumb + back */}
               <div className="flex items-start justify-between">
