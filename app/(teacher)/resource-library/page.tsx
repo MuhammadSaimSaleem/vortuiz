@@ -158,7 +158,7 @@ function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: st
     <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
       {toasts.map(t => (
         <div key={t.id}
-          className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium text-white pointer-events-auto min-w-[260px]
+          className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium text-white pointer-events-auto min-w-65
             ${t.kind === "success" ? "bg-emerald-600" : t.kind === "error" ? "bg-red-500" : "bg-brand-navy"}`}
           style={{ animation: "slideUp .2s ease" }}>
           {t.kind === "success" && <CheckCheck  className="h-4 w-4 shrink-0" />}
@@ -200,7 +200,7 @@ function ResourceCardGrid({
   return (
     <div className="group rounded-2xl border border-border bg-white overflow-hidden hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 flex flex-col">
       {/* Cover */}
-      <div className={`relative h-36 bg-gradient-to-br ${resource.coverColor} flex items-center justify-center shrink-0`}>
+      <div className={`relative h-36 bg-linear-to-br ${resource.coverColor} flex items-center justify-center shrink-0`}>
         <span className="text-4xl select-none">{resource.coverEmoji}</span>
         {/* Format badge */}
         <span className={`absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${fmt.bg} ${fmt.color}`}>
@@ -279,7 +279,7 @@ function ResourceCardList({
   return (
     <div className="group flex items-center gap-4 px-5 py-3.5 bg-white rounded-xl border border-border hover:shadow-sm transition-all">
       {/* Mini cover */}
-      <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${resource.coverColor} flex items-center justify-center shrink-0 text-lg`}>
+      <div className={`h-10 w-10 rounded-xl bg-linear-to-br ${resource.coverColor} flex items-center justify-center shrink-0 text-lg`}>
         {resource.coverEmoji}
       </div>
       {/* Info */}
@@ -339,7 +339,7 @@ function QuickViewDialog({ resource, open, onClose }: { resource: Resource | nul
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
-        <div className={`h-44 bg-gradient-to-br ${resource.coverColor} flex items-center justify-center`}>
+        <div className={`h-44 bg-linear-to-br ${resource.coverColor} flex items-center justify-center`}>
           <span className="text-6xl">{resource.coverEmoji}</span>
         </div>
         <div className="p-6">
@@ -910,7 +910,7 @@ export default function ResourceLibrary() {
                   ))}
                   {/* Add new card */}
                   <button onClick={() => setUploadOpen(true)}
-                    className="rounded-2xl border-2 border-dashed border-border bg-white flex flex-col items-center justify-center gap-3 min-h-[220px] hover:border-brand-blue hover:bg-brand-light transition-all group">
+                    className="rounded-2xl border-2 border-dashed border-border bg-white flex flex-col items-center justify-center gap-3 min-h-55 hover:border-brand-blue hover:bg-brand-light transition-all group">
                     <div className="h-12 w-12 rounded-2xl bg-slate-100 group-hover:bg-white flex items-center justify-center transition-colors">
                       <Plus className="h-6 w-6 text-slate-400 group-hover:text-brand-blue" />
                     </div>
