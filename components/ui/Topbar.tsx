@@ -35,11 +35,11 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
         {showActions && (
           <>
             <Button variant="ghost" size="sm" onClick={onSaveDraft}
-              className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-dark">
+              className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
               Save Draft
             </Button>
             <Button size="sm" onClick={onPublish}
-              className="bg-brand-dark mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
+              className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
               Publish Quiz
             </Button>
           </>
@@ -51,7 +51,7 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
               <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="bg-brand-dark text-white border-none shadow-lg"><p>Notifications</p></TooltipContent>
+          <TooltipContent className="bg-brand-navy text-white border-none shadow-lg"><p>Notifications</p></TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -59,13 +59,13 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
               <Settings className="h-4 w-4 text-slate-500" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="bg-brand-dark text-white border-none shadow-lg"><p>Settings</p></TooltipContent>
+          <TooltipContent className="bg-brand-navy text-white border-none shadow-lg"><p>Settings</p></TooltipContent>
         </Tooltip>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <div className="flex items-center gap-3 cursor-pointer group">
               <Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-brand-blue transition-all">
-                <AvatarFallback className="bg-brand-dark text-white text-xs font-bold">SK</AvatarFallback>
+                <AvatarFallback className="bg-brand-navy text-white text-xs font-bold">SK</AvatarFallback>
               </Avatar>
             </div>
           </DropdownMenuTrigger>

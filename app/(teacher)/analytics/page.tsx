@@ -202,8 +202,8 @@ export default function PerformanceAnalytics() {
           {/* ── Page Header ─────────────────────────────────────────────────────── */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-3xl font-heading font-bold text-brand-dark">Performance Analytics</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className="text-3xl font-heading font-bold text-brand-navy">Performance Analytics</h1>
+              <p className="text-sm text-brand-subtitle mt-1">
                 Real-time data for Fall Semester 2024 · Period: Last 30 Days
               </p>
             </div>
@@ -445,7 +445,7 @@ export default function PerformanceAnalytics() {
                       </div>
                       
                       {/* Day Label */}
-                      <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">
+                      <span className="text-[11px] font-bold tracking-widest text-brand-subtitle uppercase">
                         {col.day}
                       </span>
                     </div>

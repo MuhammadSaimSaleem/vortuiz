@@ -507,7 +507,15 @@ export default function StudentRoster() {
       <Topbar />
         
       <div className="min-h-screen bg-surface font-sans flex flex-col ">
-        <div className="p-6 flex flex-col max-w-7xl mx-auto">
+        <div className="p-6 flex flex-col max-w-7xl mx-auto w-full">
+
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-heading font-bold text-brand-navy">Student Directory</h1>
+            <p className="text-sm text-brand-subtitle mt-1">
+              Real-time data for current students taking quiz
+            </p>
+          </div>
           {/* Toolbar */}
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap w-full">
             <div className="flex gap-3">
@@ -558,7 +566,7 @@ export default function StudentRoster() {
 
               {/* Message Students */}
               <Button
-                className="bg-brand-dark text-white text-sm font-semibold px-5 hover:bg-brand-blue transition-colors"
+                className="bg-brand-navy text-white text-sm font-semibold px-5 hover:bg-brand-blue transition-colors"
                 onClick={handleMessageStudents}
               >
                 <Mail className="w-4 h-4 mr-2" />
@@ -634,7 +642,7 @@ export default function StudentRoster() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-bold text-brand-dark text-[15px] leading-tight">
+                            <p className="font-bold text-brand-navy text-[15px] leading-tight">
                               {student.name}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -677,7 +685,7 @@ export default function StudentRoster() {
                         </div>
                         <Progress
                           value={student.completion}
-                          className="h-2 rounded-full bg-muted"
+                          className="h-2 rounded-full bg-red"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           {student.completion}% Completion
@@ -753,7 +761,7 @@ export default function StudentRoster() {
                     disabled={page === "..."}
                     className={`w-8 h-8 text-sm font-medium ${
                       page === currentPage
-                        ? "bg-brand-dark text-white hover:bg-brand-blue"
+                        ? "bg-brand-navy text-white hover:bg-brand-blue"
                         : "text-muted-foreground"
                     }`}
                     onClick={() =>
@@ -886,7 +894,7 @@ export default function StudentRoster() {
                   Cancel
                 </Button>
                 <Button
-                  className="bg-brand-dark text-white hover:bg-brand-blue"
+                  className="bg-brand-navy text-white hover:bg-brand-blue"
                   disabled={!messageSubject.trim() || !messageBody.trim()}
                   onClick={handleSendMessage}
                 >
@@ -943,7 +951,7 @@ export default function StudentRoster() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-bold text-brand-dark text-lg">
+                  <p className="font-bold text-brand-navy text-lg">
                     {profileTarget.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -982,7 +990,7 @@ export default function StudentRoster() {
               </div>
               <DialogFooter>
                 <Button
-                  className="bg-brand-dark text-white hover:bg-brand-blue w-full"
+                  className="bg-brand-navy text-white hover:bg-brand-blue w-full"
                   onClick={() => {
                     setProfileTarget(null);
                     openMessageDialog([profileTarget]);

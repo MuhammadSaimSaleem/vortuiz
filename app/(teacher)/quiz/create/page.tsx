@@ -171,7 +171,7 @@ function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: st
       {toasts.map((t) => (
         <div key={t.id}
           className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium text-white pointer-events-auto
-            ${t.kind === "success" ? "bg-emerald-600" : t.kind === "error" ? "bg-red-500" : "bg-brand-dark"}`}
+            ${t.kind === "success" ? "bg-emerald-600" : t.kind === "error" ? "bg-red-500" : "bg-brand-navy"}`}
           style={{ animation: "slideUp .2s ease" }}
         >
           {t.kind === "success" && <CheckCheck   className="h-4 w-4 shrink-0" />}
@@ -220,29 +220,29 @@ function SubjectSelectionScreen({
         <p className="text-[11px] font-bold uppercase tracking-widest text-brand-blue mb-2">
           Step 1 of 2
         </p>
-        <h1 className="text-3xl font-bold text-brand-dark tracking-tight mb-2">
+        <h1 className="text-3xl font-bold text-brand-navy tracking-tight mb-2">
           Choose a Subject or Department
         </h1>
-        <p className="text-slate-400 text-sm leading-relaxed max-w-lg">
+        <p className="text-brand-subtitle text-sm leading-relaxed max-w-lg">
           Select the subject area for your quiz. This sets the department context and helps organise your quiz in the library.
         </p>
       </div>
 
       {/* Search */}
       <div className="relative mb-7">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-subtitle" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search subjects…"
-          className="w-full h-11 pl-11 pr-4 rounded-xl border border-border bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
+          className="w-full h-11 pl-11 pr-4 rounded-xl border border-border bg-white text-sm text-slate-700 placeholder:text-brand-subtitle focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
         />
       </div>
 
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
-          <p className="text-sm font-medium text-slate-400">No subjects match &ldquo;{search}&rdquo;</p>
+          <p className="text-sm font-medium text-brand-subtitle">No subjects match &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -262,7 +262,7 @@ function SubjectSelectionScreen({
               </div>
 
               {/* Label */}
-              <p className={`text-sm font-bold text-center transition-colors ${hovered === subject.id ? "text-brand-dark" : "text-slate-600"}`}>
+              <p className={`text-sm font-bold text-center transition-colors ${hovered === subject.id ? "text-brand-navy" : "text-slate-600"}`}>
                 {subject.label}
               </p>
 
@@ -303,7 +303,7 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
     <div className="flex flex-col gap-4 sticky top-20">
       {/* Summary */}
       <div className="rounded-2xl border border-border bg-white p-5">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">Quiz Summary</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-brand-subtitle mb-4">Quiz Summary</p>
         <div className="space-y-3">
           {[
             { label: "Total Questions", value: String(questions.length), icon: <List   className="h-4 w-4 text-brand-blue"  /> },
@@ -312,15 +312,15 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
             { label: "Difficulty",      value: diffLabel,                icon: <Target className="h-4 w-4 text-orange-500" />, valueClass: diffCls },
           ].map(({ label, value, icon, valueClass }) => (
             <div key={label} className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-slate-400">{icon}{label}</div>
-              <span className={`text-xs font-bold ${valueClass ?? "text-brand-dark"}`}>{value}</span>
+              <div className="flex items-center gap-2 text-xs text-brand-subtitle">{icon}{label}</div>
+              <span className={`text-xs font-bold ${valueClass ?? "text-brand-navy"}`}>{value}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* AI Suggestions */}
-      <div className="rounded-2xl border border-border bg-linear-to-br from-brand-dark to-brand-blue p-5 text-white relative overflow-hidden">
+      <div className="rounded-2xl border border-border bg-linear-to-br from-brand-navy to-brand-blue p-5 text-white relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none" />
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-blue-200" />
@@ -339,11 +339,11 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
       <div className="rounded-2xl border border-border bg-white p-5">
         <div className="flex items-center gap-2 mb-4">
           <BarChart2 className="h-4 w-4 text-brand-blue" />
-          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Question Types</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-brand-subtitle">Question Types</p>
         </div>
         <div className="space-y-2.5">
           {[
-            { label: "Multiple Choice", count: mcCount, color: "bg-brand-dark" },
+            { label: "Multiple Choice", count: mcCount, color: "bg-brand-navy" },
             { label: "True / False",    count: tfCount, color: "bg-orange-400" },
             { label: "Short Answer",    count: saCount, color: "bg-emerald-400"},
             { label: "Checkbox",        count: cbCount, color: "bg-purple-400" },
@@ -351,7 +351,7 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
             <div key={label}>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-slate-500 font-medium">{label}</span>
-                <span className="text-slate-400">{count}</span>
+                <span className="text-brand-subtitle">{count}</span>
               </div>
               <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                 <div className={`h-full rounded-full transition-all duration-500 ${color}`}
@@ -365,14 +365,14 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
       {/* Collaborators */}
       <div className="rounded-2xl border border-border bg-white p-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Collaborators</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-brand-subtitle">Collaborators</p>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6">
-                <Plus className="h-3.5 w-3.5 text-slate-400" />
+                <Plus className="h-3.5 w-3.5 text-brand-subtitle" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-brand-dark text-white border-none text-xs">Invite collaborator</TooltipContent>
+            <TooltipContent className="bg-brand-navy text-white border-none text-xs">Invite collaborator</TooltipContent>
           </Tooltip>
         </div>
         <div className="flex -space-x-2">
@@ -380,16 +380,16 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
             <Tooltip key={initials}>
               <TooltipTrigger asChild>
                 <Avatar className="h-8 w-8 border-2 border-white cursor-pointer">
-                  <AvatarFallback className={`text-[10px] font-bold text-white ${["bg-brand-dark","bg-purple-500","bg-emerald-600"][i]}`}>
+                  <AvatarFallback className={`text-[10px] font-bold text-white ${["bg-brand-navy","bg-purple-500","bg-emerald-600"][i]}`}>
                     {initials}
                   </AvatarFallback>
                 </Avatar>
               </TooltipTrigger>
-              <TooltipContent className="bg-brand-dark text-white border-none text-xs">{initials}</TooltipContent>
+              <TooltipContent className="bg-brand-navy text-white border-none text-xs">{initials}</TooltipContent>
             </Tooltip>
           ))}
           <div className="h-8 w-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center">
-            <span className="text-[10px] font-bold text-slate-400">+2</span>
+            <span className="text-[10px] font-bold text-brand-subtitle">+2</span>
           </div>
         </div>
       </div>
@@ -433,7 +433,7 @@ function QuestionCard({
             Question {String(question.number).padStart(2, "0")}
           </p>
           {question.collapsed ? (
-            <p className="text-sm font-semibold text-brand-dark truncate">{question.text || "Untitled question"}</p>
+            <p className="text-sm font-semibold text-brand-navy truncate">{question.text || "Untitled question"}</p>
           ) : (
             <Input value={question.text}
               onChange={e => onUpdateQuestionText(question.id, e.target.value)}
@@ -444,7 +444,7 @@ function QuestionCard({
 
         <div className="flex items-center gap-1.5 shrink-0 ml-4">
           <Select value={question.type} onValueChange={v => onChangeType(question.id, v as QuestionType)}>
-            <SelectTrigger className="h-7 text-[11px] font-bold border-0 bg-brand-dark text-white rounded-full px-3 focus:ring-0 w-auto gap-1">
+            <SelectTrigger className="h-7 text-[11px] font-bold border-0 bg-brand-navy text-white rounded-full px-3 focus:ring-0 w-auto gap-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -459,7 +459,7 @@ function QuestionCard({
                 <ChevronUp className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-brand-dark text-white border-none text-xs">Move up</TooltipContent>
+            <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move up</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -468,24 +468,24 @@ function QuestionCard({
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-brand-dark text-white border-none text-xs">Move down</TooltipContent>
+            <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move down</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="default" size="icon" className="h-7 w-7 bg-slate-100 text-brand-dark hover:text-slate-500"
+              <Button variant="default" size="icon" className="h-7 w-7 bg-slate-100 text-brand-navy hover:text-slate-500"
                 onClick={() => onCollapse(question.id)}>
                 {question.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-brand-dark text-white border-none text-xs">
+            <TooltipContent className="bg-brand-navy text-white border-none text-xs">
               {question.collapsed ? "Expand" : "Collapse"}
             </TooltipContent>
           </Tooltip>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-brand-subtitle">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -509,12 +509,12 @@ function QuestionCard({
             <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
             <input type="number" min={1} max={100} value={question.points}
               onChange={e => onUpdatePoints(question.id, Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-14 text-xs font-bold text-brand-dark border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-blue" />
-            <span className="text-xs text-slate-400">Points</span>
+              className="w-14 text-xs font-bold text-brand-navy border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-blue" />
+            <span className="text-xs text-brand-subtitle">Points</span>
           </div>
 
           {isShortAnswer ? (
-            <div className="rounded-xl border border-dashed border-border bg-slate-50 p-5 text-center text-sm text-slate-400 mb-4">
+            <div className="rounded-xl border border-dashed border-border bg-slate-50 p-5 text-center text-sm text-brand-subtitle mb-4">
               Students will type a free-text answer. No options needed.
             </div>
           ) : (
@@ -533,7 +533,7 @@ function QuestionCard({
                     className="flex-1 text-sm bg-transparent border-none outline-none font-medium text-slate-700 placeholder:text-slate-300"
                     placeholder="Option text…" />
                   {opt.correct && (
-                    <Badge className="bg-brand-dark text-white border-0 text-[10px] font-bold px-2 py-0.5 shrink-0">✓</Badge>
+                    <Badge className="bg-brand-navy text-white border-0 text-[10px] font-bold px-2 py-0.5 shrink-0">✓</Badge>
                   )}
                   {question.options.length > 1 && (
                     <button onClick={() => onDeleteOption(question.id, opt.id)}
@@ -555,12 +555,12 @@ function QuestionCard({
             ) : <span />}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Required</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-subtitle">Required</span>
                 <Switch checked={question.required} onCheckedChange={() => onToggleRequired(question.id)}
-                  className="data-[state=checked]:bg-brand-dark" />
+                  className="data-[state=checked]:bg-brand-navy" />
               </div>
               <Button size="sm" onClick={() => onDone(question.id)}
-                className="bg-brand-dark hover:bg-brand-blue text-white font-semibold text-xs h-8 px-5 rounded-lg transition-colors">
+                className="bg-brand-navy hover:bg-brand-blue text-white font-semibold text-xs h-8 px-5 rounded-lg transition-colors">
                 Done
               </Button>
             </div>
@@ -601,7 +601,7 @@ function PublishDialog({ open, onConfirm, onCancel, title }: { open: boolean; on
         </DialogHeader>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button className="bg-brand-dark hover:bg-brand-blue text-white" onClick={onConfirm}>Publish</Button>
+          <Button className="bg-brand-navy hover:bg-brand-blue text-white" onClick={onConfirm}>Publish</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -769,9 +769,9 @@ export default function QuizBuilderPage() {
             ].map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-300" />}
-                <div className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-dark" : "text-slate-300"}`}>
+                <div className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                    ${s.active ? "bg-brand-dark text-white" : "bg-slate-100 text-slate-400"}`}>
+                    ${s.active ? "bg-brand-navy text-white" : "bg-slate-100 text-brand-subtitle"}`}>
                     {s.n}
                   </span>
                   {s.label}
@@ -795,7 +795,7 @@ export default function QuizBuilderPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <button onClick={() => setStep("subject")}
-                      className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-colors">
+                      className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-brand-subtitle hover:text-brand-blue transition-colors">
                       <ArrowLeft className="h-3 w-3" /> Change subject
                     </button>
                     <span className="text-slate-300 text-xs">/</span>
@@ -803,7 +803,7 @@ export default function QuizBuilderPage() {
                       {selectedSubject.department}
                     </span>
                   </div>
-                  <h1 className="text-3xl font-bold text-brand-dark tracking-tight">
+                  <h1 className="text-3xl font-bold text-brand-navy tracking-tight">
                     New {selectedSubject.label} Assessment
                   </h1>
                 </div>
@@ -821,38 +821,38 @@ export default function QuizBuilderPage() {
               <div className="rounded-2xl border border-border bg-white p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <Settings className="h-5 w-5 text-brand-blue" />
-                  <h2 className="text-lg font-bold text-brand-dark">Quiz Settings</h2>
+                  <h2 className="text-lg font-bold text-brand-navy">Quiz Settings</h2>
                 </div>
                 <div className="grid grid-cols-[1fr_220px] gap-5">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quiz Title</Label>
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Quiz Title</Label>
                       <Input value={title} onChange={e => setTitle(e.target.value)}
                         placeholder="Enter quiz title"
                         className="h-10 text-sm border-border focus-visible:ring-brand-blue rounded-xl" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</Label>
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Description</Label>
                       <Textarea value={description} onChange={e => setDescription(e.target.value)}
                         placeholder="Describe what this quiz covers…"
                         rows={4} className="text-sm border-border focus-visible:ring-brand-blue rounded-xl resize-none" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Time Limit (mins)</Label>
+                        <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Time Limit (mins)</Label>
                         <div className="flex items-center gap-2 h-10 border border-border rounded-xl px-3 bg-white">
-                          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <Clock className="h-3.5 w-3.5 text-brand-subtitle shrink-0" />
                           <input type="number" min={1} max={300} value={timeLimit}
                             onChange={e => setTimeLimit(Math.max(1, parseInt(e.target.value) || 1))}
                             className="flex-1 text-sm border-0 p-0 bg-transparent focus:outline-none" />
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grading</Label>
+                        <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Grading</Label>
                         <Select value={grading} onValueChange={setGrading}>
                           <SelectTrigger className="h-10 text-sm border-border rounded-xl focus:ring-brand-blue">
                             <div className="flex items-center gap-2">
-                              <Star className="h-3.5 w-3.5 text-slate-400" />
+                              <Star className="h-3.5 w-3.5 text-brand-subtitle" />
                               <SelectValue />
                             </div>
                           </SelectTrigger>
@@ -868,7 +868,7 @@ export default function QuizBuilderPage() {
 
                   {/* Cover image */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cover Image</Label>
+                    <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Cover Image</Label>
                     <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                     <div onClick={() => coverRef.current?.click()}
                       className="h-42.5 rounded-xl border-2 border-dashed border-border bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden relative">
@@ -887,7 +887,7 @@ export default function QuizBuilderPage() {
                           <div className="h-10 w-10 rounded-xl bg-brand-light flex items-center justify-center">
                             <Plus className="h-5 w-5 text-brand-blue" />
                           </div>
-                          <p className="text-xs text-slate-400 font-medium text-center px-4">Click to upload cover image</p>
+                          <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image</p>
                         </>
                       )}
                     </div>
@@ -900,7 +900,7 @@ export default function QuizBuilderPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Plus className="h-5 w-5 text-brand-blue" />
-                    <h2 className="text-lg font-bold text-brand-dark">Question Builder</h2>
+                    <h2 className="text-lg font-bold text-brand-navy">Question Builder</h2>
                     <Badge className="bg-brand-light text-brand-blue border-0 text-xs font-bold px-2.5 py-0.5 rounded-full">
                       {questions.length}
                     </Badge>
@@ -909,22 +909,22 @@ export default function QuizBuilderPage() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" className="h-8 w-8 border-border rounded-lg" onClick={handleToggleAll}>
-                          <List className="h-4 w-4 text-slate-400" />
+                          <List className="h-4 w-4 text-brand-subtitle" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-brand-dark text-white border-none text-xs">Toggle all</TooltipContent>
+                      <TooltipContent className="bg-brand-navy text-white border-none text-xs">Toggle all</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" className="h-8 w-8 border-border rounded-lg"
                           onClick={() => questions.length > 0 && setShowClearDialog(true)}>
-                          <Trash2 className="h-4 w-4 text-slate-400" />
+                          <Trash2 className="h-4 w-4 text-brand-subtitle" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-brand-dark text-white border-none text-xs">Clear all</TooltipContent>
+                      <TooltipContent className="bg-brand-navy text-white border-none text-xs">Clear all</TooltipContent>
                     </Tooltip>
                     <Button size="sm" onClick={() => handleCreateQuestion("MULTIPLE CHOICE")}
-                      className="bg-brand-dark hover:bg-brand-blue text-white font-semibold text-xs h-8 px-4 rounded-xl gap-1.5 transition-colors">
+                      className="bg-brand-navy hover:bg-brand-blue text-white font-semibold text-xs h-8 px-4 rounded-xl gap-1.5 transition-colors">
                       <Plus className="h-3.5 w-3.5" /> Create Question
                     </Button>
                   </div>
@@ -935,8 +935,8 @@ export default function QuizBuilderPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand-light flex items-center justify-center">
                       <LayoutList className="h-6 w-6 text-brand-blue" />
                     </div>
-                    <p className="text-sm font-semibold text-brand-dark">No questions yet</p>
-                    <p className="text-xs text-slate-400">Click &ldquo;Create Question&rdquo; or pick a type below to get started.</p>
+                    <p className="text-sm font-semibold text-brand-navy">No questions yet</p>
+                    <p className="text-xs text-brand-subtitle">Click &ldquo;Create Question&rdquo; or pick a type below to get started.</p>
                   </div>
                 )}
 
@@ -965,7 +965,7 @@ export default function QuizBuilderPage() {
 
               {/* Question type picker */}
               <div className="rounded-2xl border border-border bg-white p-4">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-brand-subtitle mb-3 px-1">
                   Add Question Type
                 </p>
                 <div className="grid grid-cols-4 gap-3">
@@ -973,7 +973,7 @@ export default function QuizBuilderPage() {
                     <button key={label} onClick={() => handleCreateQuestion(label)}
                       className="flex flex-col items-center gap-2.5 rounded-xl border border-border p-4 hover:border-brand-blue hover:bg-brand-light transition-all group">
                       <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${color}`}>{icon}</div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-brand-dark text-center leading-tight">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-brand-navy text-center leading-tight">
                         {label}
                       </span>
                     </button>

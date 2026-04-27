@@ -50,7 +50,7 @@ const quizzes: Quiz[] = [
 function StatusBadge({ status }: { status: QuizStatus }) {
   const isActive = status === "ACTIVE";
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${isActive ? "text-emerald-600" : "text-slate-400"}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${isActive ? "text-emerald-600" : "text-brand-subtitle"}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
       {status}
     </span>
@@ -96,15 +96,15 @@ export default function TeacherDashboard() {
         {/* Page Header */}
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Instructor Dashboard</h1>
-            <p className="text-slate-500 mt-1 text-base">Welcome back, Professor Smith. Here is what&apos;s happening today.</p>
+            <h1 className="text-3xl font-extrabold text-brand-navy tracking-tight">Teacher&apos;s Dashboard</h1>
+            <p className="text-slate-500 mt-1 text-base">Welcome back, Professor Abdullah. Here is what&apos;s happening today.</p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="h-11 px-5 gap-2 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 shadow-sm">
               <Download className="h-4 w-4" />
               Export Report
             </Button>
-            <Button className="h-11 px-5 gap-2 bg-brand-dark hover:bg-brand-dark/90 text-white rounded-xl shadow-md transition-all">
+            <Button className="h-11 px-5 gap-2 bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl shadow-md transition-all">
               <Plus className="h-4 w-4" />
               Create New Quiz
             </Button>
@@ -121,7 +121,7 @@ export default function TeacherDashboard() {
                 </div>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none font-bold">+12%</Badge>
               </div>
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Students</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-brand-subtitle">Total Students</p>
               <p className="text-4xl font-black text-slate-900 mt-1">1,284</p>
             </CardContent>
           </Card>
@@ -132,14 +132,14 @@ export default function TeacherDashboard() {
                 <div className="p-2.5 bg-slate-50 rounded-xl">
                   <ClipboardList className="h-5 w-5 text-slate-600" />
                 </div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Steady</span>
+                <span className="text-xs font-bold text-brand-subtitle uppercase tracking-widest">Steady</span>
               </div>
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Active Quizzes</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-brand-subtitle">Active Quizzes</p>
               <p className="text-4xl font-black text-slate-900 mt-1">24</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none col-span-2 shadow-lg bg-linear-to-br from-brand-dark to-brand-blue text-white rounded-2xl">
+          <Card className="border-none col-span-2 shadow-lg bg-linear-to-br from-brand-navy to-brand-blue text-white rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md">
@@ -172,10 +172,10 @@ export default function TeacherDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Quiz Name</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Join Code</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Participants</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Quiz Name</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Join Code</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Status</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle text-right">Participants</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -183,7 +183,7 @@ export default function TeacherDashboard() {
                     <TableRow key={quiz.id} className="border-slate-100 group cursor-pointer transition-colors">
                       <TableCell className="py-4">
                         <p className="text-sm font-bold text-slate-800 group-hover:text-brand-blue transition-colors">{quiz.name}</p>
-                        <p className="text-xs text-slate-400 font-medium">{quiz.subtitle}</p>
+                        <p className="text-xs text-brand-subtitle font-medium">{quiz.subtitle}</p>
                       </TableCell>
                       <TableCell><JoinCodeBadge code={quiz.joinCode} /></TableCell>
                       <TableCell><StatusBadge status={quiz.status} /></TableCell>
@@ -213,7 +213,7 @@ export default function TeacherDashboard() {
                     </div>
                     <div className="text-left flex-1">
                       <p className="text-sm font-bold text-slate-700">{label}</p>
-                      <p className="text-[11px] text-slate-400 font-medium">{sub}</p>
+                      <p className="text-[11px] text-brand-subtitle font-medium">{sub}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500" />
                   </button>
@@ -233,7 +233,7 @@ export default function TeacherDashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800 leading-tight">Engagement Rate</p>
-                    <p className="text-xs text-slate-400 font-medium mt-1">Top 5% in organization</p>
+                    <p className="text-xs text-brand-subtitle font-medium mt-1">Top 5% in organization</p>
                   </div>
                 </div>
                 <div className="flex items-end gap-1.5 h-30">
