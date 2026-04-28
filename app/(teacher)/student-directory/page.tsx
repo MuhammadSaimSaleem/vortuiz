@@ -550,7 +550,7 @@ export default function StudentRoster() {
               {/* Export */}
               <Button
                 variant="outline"
-                className="text-sm font-medium border-border bg-white"
+                className="h-11 px-5 gap-2 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 shadow-sm"
                 onClick={() => exportToCSV(filtered)}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -559,7 +559,7 @@ export default function StudentRoster() {
 
               {/* Message Students */}
               <Button
-                className="bg-brand-navy text-white text-sm font-semibold px-5 hover:bg-brand-blue transition-colors"
+                className="h-11 px-5 gap-2 bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl shadow-md transition-all"
                 onClick={handleMessageStudents}
               >
                 <Mail className="w-4 h-4 mr-2" />

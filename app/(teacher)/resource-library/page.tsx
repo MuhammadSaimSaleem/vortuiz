@@ -492,7 +492,7 @@ export default function ResourceLibrary() {
   const [folders,   setFolders]   = useState<FolderType[]>(INITIAL_FOLDERS);
 
   // UI state
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [viewMode,        setViewMode]        = useState<ViewMode>("grid");
   const [search,          setSearch]          = useState("");
   const [sortBy,          setSortBy]          = useState<SortOption>("recently_added");

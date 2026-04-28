@@ -23,31 +23,21 @@ import {
   Users,
   ClipboardList,
 } from "lucide-react";
-
-// --- Types ---
-type QuizStatus = "ACTIVE" | "DRAFT";
-
-interface Quiz {
-  id: string;
-  name: string;
-  subtitle: string;
-  joinCode: string;
-  status: QuizStatus;
-  participants: number;
-}
+import { Quiz, QuizStatus } from "@/lib/data";
+import Link from "next/link";
 
 // --- Data ---
 const quizzes: Quiz[] = [
-  { id: "1", name: "Modern Architecture History", subtitle: "Midterm Preparation", joinCode: "ARC-452", status: "ACTIVE", participants: 142 },
-  { id: "2", name: "Quantum Physics Basics", subtitle: "Weekly Knowledge Check", joinCode: "PHY-991", status: "DRAFT", participants: 0 },
-  { id: "3", name: "Introduction to UX Design", subtitle: "Case Study Review", joinCode: "DES-021", status: "ACTIVE", participants: 86 },
-  { id: "4", name: "Macroeconomics 101", subtitle: "Final Semester Revision", joinCode: "ECO-111", status: "ACTIVE", participants: 312 },
+  { id: "1", name: "Modern Architecture History", subtitle: "Midterm Preparation", joinCode: "ARC-452", status: "active", participantCount: 142 },
+  { id: "2", name: "Quantum Physics Basics", subtitle: "Weekly Knowledge Check", joinCode: "PHY-991", status: "draft", participantCount: 0 },
+  { id: "3", name: "Introduction to UX Design", subtitle: "Case Study Review", joinCode: "DES-021", status: "active", participantCount: 86 },
+  { id: "4", name: "Macroeconomics 101", subtitle: "Final Semester Revision", joinCode: "ECO-111", status: "active", participantCount: 312 },
 ];
 
 // --- Sub-components ---
 
 function StatusBadge({ status }: { status: QuizStatus }) {
-  const isActive = status === "ACTIVE";
+  const isActive = status === "active";
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${isActive ? "text-emerald-600" : "text-brand-subtitle"}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
@@ -119,7 +109,7 @@ export default function TeacherDashboard() {
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none font-bold">+12%</Badge>
               </div>
               <p className="text-xs font-bold uppercase tracking-widest text-brand-subtitle">Total Students</p>
-              <p className="text-4xl font-black text-slate-900 mt-1">1,284</p>
+              <p className="text-4xl font-black text-brand-navy mt-1">1,284</p>
             </CardContent>
           </Card>
 
@@ -132,7 +122,7 @@ export default function TeacherDashboard() {
                 <span className="text-xs font-bold text-brand-subtitle uppercase tracking-widest">Steady</span>
               </div>
               <p className="text-xs font-bold uppercase tracking-widest text-brand-subtitle">Active Quizzes</p>
-              <p className="text-4xl font-black text-slate-900 mt-1">24</p>
+              <p className="text-4xl font-black text-brand-navy mt-1">24</p>
             </CardContent>
           </Card>
 
@@ -161,9 +151,11 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Table Area */}
           <Card className="lg:col-span-2 border-slate-100 shadow-soft rounded-2xl h-fit">
-            <CardHeader className="px-6 pt-6 pb-2 flex-row items-center justify-between">
-              <CardTitle className="text-lg font-bold text-slate-900">Recent Quizzes</CardTitle>
-              <Button variant="link" className="text-brand-blue font-bold hover:no-underline">View All</Button>
+            <CardHeader className="px-6 pt-6 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-bold text-brand-navy">Recent Quizzes</CardTitle>
+                <Button variant="link" className="text-brand-blue font-bold hover:no-underline">View All</Button>
+              </div>
             </CardHeader>
             <CardContent className="px-6 pb-6">
               <Table>
@@ -184,7 +176,7 @@ export default function TeacherDashboard() {
                       </TableCell>
                       <TableCell><JoinCodeBadge code={quiz.joinCode} /></TableCell>
                       <TableCell><StatusBadge status={quiz.status} /></TableCell>
-                      <TableCell className="text-right text-sm font-bold text-slate-700">{quiz.participants}</TableCell>
+                      <TableCell className="text-right text-sm font-bold text-slate-700">{quiz.participantCount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -196,23 +188,25 @@ export default function TeacherDashboard() {
           <div className="space-y-6">
             <Card className="border-slate-100 shadow-soft rounded-2xl">
               <CardHeader className="px-6 pt-6 pb-4">
-                <CardTitle className="text-lg font-bold text-slate-900">Quick Actions</CardTitle>
+                <CardTitle className="text-lg font-bold text-brand-navy">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-6 space-y-2">
                 {[
-                  { icon: Plus, label: "Create New Quiz", sub: "Start a fresh assessment" },
-                  { icon: BookOpen, label: "Manage Question Bank", sub: "Browse 2,400 questions" },
-                  { icon: Share2, label: "Share Materials", sub: "Send to other educators" },
-                ].map(({ icon: Icon, label, sub }) => (
-                  <button key={label} className="flex w-full items-center gap-4 rounded-xl p-3 hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-brand-blue/10 transition-colors">
-                      <Icon className="h-5 w-5 text-slate-600 group-hover:text-brand-blue" />
-                    </div>
-                    <div className="text-left flex-1">
-                      <p className="text-sm font-bold text-slate-700">{label}</p>
-                      <p className="text-[11px] text-brand-subtitle font-medium">{sub}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500" />
+                  { icon: Plus, label: "Create New Quiz", sub: "Start a fresh assessment", link: "/quiz/create" },
+                  { icon: BookOpen, label: "Manage Question Bank", sub: "Browse 2,400 questions", link: "/question-bank" },
+                  { icon: Share2, label: "Share Materials", sub: "Send to other educators", link: "/share-material" },
+                ].map(({ icon: Icon, label, sub, link}) => (
+                  <button key={label} className="flex w-full items-center rounded-xl p-3 hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">
+                    <Link href={link} className="flex w-full items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-brand-blue/10 transition-colors">
+                        <Icon className="h-5 w-5 text-slate-600 group-hover:text-brand-blue" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-bold text-slate-700">{label}</p>
+                        <p className="text-[11px] text-brand-subtitle font-medium">{sub}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500" />
+                    </Link>
                   </button>
                 ))}
               </CardContent>
@@ -220,7 +214,7 @@ export default function TeacherDashboard() {
 
             <Card className="border-slate-100 shadow-soft rounded-2xl">
               <CardHeader className="px-6 pt-6 pb-4">
-                <CardTitle className="text-lg font-bold text-slate-900">Engagement Insights</CardTitle>
+                <CardTitle className="text-lg font-bold text-brand-navy">Engagement Insights</CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <div className="flex items-center gap-5 mb-6">

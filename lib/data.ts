@@ -24,14 +24,16 @@ export type QuizStatus = 'active' | 'draft' | 'archived';
 
 export interface Quiz {
   id: string;
-  instructor_id: string;
-  title: string;
-  description: string;
-  join_code: string; // e.g., "ARC-452"
+  name?: string;
+  subtitle?: string;
+  instructorId?: string;
+  title?: string;
+  description?: string;
+  joinCode: string; // e.g., "ARC-452"
   status: QuizStatus;
-  participant_count: number;
-  created_at: string;
-  subject_category: string;
+  participantCount?: number;
+  createdAt?: string;
+  subjectCategory?: string;
 }
 
 export interface Question {
