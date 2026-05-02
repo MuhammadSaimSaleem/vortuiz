@@ -12,10 +12,8 @@ import {
   Box,
   HelpCircle,
   LogOut,
-  Notebook,
   PencilLine,
   Star,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 
@@ -24,15 +22,15 @@ const teacherNavItems = [
   { icon: BookOpen, label: "View Quiz", href: "/teacher/quiz/view" },
   { icon: PencilLine, label: "Quiz Builder", href: "/teacher/quiz/create" },
   { icon: BookText, label: "Student Directory", href: "/teacher/student-directory" },
-  { icon: BarChart2, label: "Analytics", href: "/teacher/analytics" },
+  { icon: BarChart2, label: "Performance Analytics", href: "/teacher/analytics" },
   { icon: Box, label: "Resource Library", href: "/teacher/resource-library" },
 ];
 
 const studentNavItems = [
   { icon: AlignJustify, label: "Dashboard", href: "/student/dashboard" },
   { icon: BookOpen, label: "View Quiz", href: "/student/quiz/view" },
-  { icon: Notebook, label: "Study Materials", href: "/student/study-materials" },
-  { icon: TrendingUp, label: "Performance", href: "/student/performance" },
+  { icon: BarChart2, label: "Performance Analytics", href: "/student/analytics" },
+  { icon: Box, label: "Resource Library", href: "/student/resource-library" },
   { icon: Star, label: "Achievements", href: "/student/achievements" },
 ];
 
