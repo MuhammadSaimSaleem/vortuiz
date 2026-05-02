@@ -29,6 +29,7 @@ import {
   Lock,
   PlayCircle,
 } from "lucide-react";
+import Topbar from "@/components/ui/Topbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Difficulty = "Beginner" | "Intermediate" | "Advanced";

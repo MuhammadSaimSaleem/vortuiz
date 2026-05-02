@@ -749,30 +749,37 @@ export default function QuizBuilderPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-surface flex flex-col">
-        <TopBar
-          onSaveDraft={handleSaveDraft}
-          onPublish={handlePublishClick}
-          showActions={step === "builder"}
-        />
-
         {/* ── Step indicator strip (Now shown on both screens) ── */}
         <div className="border-b border-border bg-white">
-          <div className="max-w-215 px-8 py-3 flex items-center gap-3">
+          <div className="w-full px-8 py-3 flex items-center gap-3">
             {[
               { n: 1, label: "Choose Subject", active: true },
               { n: 2, label: "Build Quiz",     active: step === "builder" },
             ].map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-300" />}
-                <div className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
-                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                    ${s.active ? "bg-brand-navy text-white" : "bg-slate-100 text-brand-subtitle"}`}>
-                    {s.n}
-                  </span>
-                  {s.label}
-                </div>
+                  <div className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
+                    <span className={`size-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                      ${s.active ? "bg-brand-navy text-white" : "bg-slate-100 text-brand-subtitle"}`}>
+                      {s.n}
+                    </span>
+                    {s.label}
+                  </div>
               </div>
             ))}
+            {step === 'builder' ? (
+              <div className="ml-auto">
+                <Button variant="ghost" size="sm" onClick={handleSaveDraft}
+                  className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
+                  Save Draft
+                </Button>
+                <Button size="sm" onClick={handlePublishClick}
+                  className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
+                  Publish Quiz
+                </Button>
+              </div>) : (
+              <div className="ml-auto h-9" />
+            )}
           </div>
         </div>
 

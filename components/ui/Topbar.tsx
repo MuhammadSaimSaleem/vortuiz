@@ -2,7 +2,6 @@
 
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -20,11 +19,7 @@ import {
 import NotificationDropdown from "./NotificationModal";
 import { useState } from "react";
 
-export default function TopBar({ onSaveDraft, onPublish, showActions }: {
-  onSaveDraft?: () => void;
-  onPublish?: () => void;
-  showActions?: boolean;
-}) {
+export default function TopBar(){
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   
@@ -36,18 +31,7 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
           className="h-9 pl-9 text-sm bg-slate-50 border-border focus-visible:ring-brand-blue rounded-xl" />
       </div>
       <div className="flex items-center gap-2">
-        {showActions && (
-          <>
-            <Button variant="ghost" size="sm" onClick={onSaveDraft}
-              className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
-              Save Draft
-            </Button>
-            <Button size="sm" onClick={onPublish}
-              className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
-              Publish Quiz
-            </Button>
-          </>
-        )}
+        
         <Tooltip open={isNotifOpen ? false : undefined}>
           <TooltipTrigger asChild>
              <div> {/* Wrapped in a div to ensure TooltipTrigger has a clean target */}

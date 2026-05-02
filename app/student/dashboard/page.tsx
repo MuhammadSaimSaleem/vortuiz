@@ -8,13 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
-  BarChart2,
   BookOpen,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Compass,
   Grid2X2,
   Languages,
   MoreVertical,
@@ -22,7 +20,6 @@ import {
   Scroll,
   Star,
   TrendingUp,
-  AlignJustify,
   Sigma,
   FlaskConical,
   History,
@@ -120,11 +117,11 @@ function JoinQuizBanner() {
       <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5 pointer-events-none" />
       <div className="absolute bottom-0 right-12 w-24 h-24 rounded-full bg-white/5 pointer-events-none" />
 
-      <h2 className="text-xl font-bold text-white mb-1.5 relative z-10">Ready for a challenge?</h2>
-      <p className="text-sm text-blue-200 mb-6 relative z-10">
+      <h2 className="text-xl font-bold text-white mb-1.5 relative">Ready for a challenge?</h2>
+      <p className="text-sm text-blue-200 mb-6 relative">
         Enter a join code to start a live session or access a private test.
       </p>
-      <div className="flex items-center gap-3 relative z-10">
+      <div className="flex items-center gap-3 relative">
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value)}
