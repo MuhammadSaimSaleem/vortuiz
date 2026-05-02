@@ -75,7 +75,6 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import TopBar from "@/components/ui/Topbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type QuestionType = "MULTIPLE CHOICE" | "TRUE / FALSE" | "SHORT ANSWER" | "CHECKBOX";
