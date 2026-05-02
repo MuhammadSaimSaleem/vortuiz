@@ -227,18 +227,16 @@ export default function TeacherDashboard() {
                     <p className="text-xs text-brand-subtitle font-medium mt-1">Top 5% in organization</p>
                   </div>
                 </div>
-                <div className="flex items-end gap-1.5 h-30">
                   {[30, 50, 45, 70, 85, 80, 95].map((h, i) => (
                     <div
                       key={i}
                       className="flex-1 rounded-t-md transition-all duration-500"
                       style={{ 
                         height: `${h}%`, 
-                        backgroundColor: h >= (Math.random() * 10) ? 'var(--brand-blue)' : 'var(--brand-light)' 
+                        backgroundColor: h >= 50 ? 'var(--brand-blue)' : 'var(--brand-light)' 
                       }}
                     />
                   ))}
-                </div>
               </CardContent>
             </Card>
           </div>

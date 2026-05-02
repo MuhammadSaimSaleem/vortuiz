@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -42,7 +40,6 @@ import {
   AlignLeft,
   ArrowLeft,
   BarChart2,
-  Bell,
   BookOpen,
   CheckCheck,
   CheckCircle2,
@@ -58,7 +55,6 @@ import {
   FlaskConical,
   Globe,
   GripVertical,
-  HelpCircle,
   History,
   Languages,
   LayoutList,
@@ -66,7 +62,6 @@ import {
   MoreHorizontal,
   Music,
   Palette,
-  Pencil,
   Plus,
   Search,
   Settings,
@@ -214,7 +209,7 @@ function SubjectSelectionScreen({
   );
 
   return (
-    <div className="flex-1 max-w-215 mx-auto w-full px-6 py-10">
+    <div className="flex-1 max-w-300 mx-auto w-full px-6 py-10">
       {/* Header */}
       <div className="mb-10">
         <p className="text-[11px] font-bold uppercase tracking-widest text-brand-blue mb-2">

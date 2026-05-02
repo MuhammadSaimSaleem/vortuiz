@@ -13,32 +13,27 @@ import {
   HelpCircle,
   LogOut,
   Notebook,
+  PencilLine,
   Star,
   TrendingUp,
   Zap,
 } from "lucide-react";
 
-// Helper to convert label to URL-friendly path
-const getPath = (label: string) => {
-  if (label === "Dashboard") return "/dashboard";
-  if (label === "Quiz Builder") return "/quiz/create";
-  return `/${label.toLowerCase().replace(/\s+/g, "-")}`;
-};
-
 const teacherNavItems = [
-  { icon: AlignJustify, label: "Dashboard" },
-  { icon: BookOpen, label: "Quiz Builder" },
-  { icon: BookText, label: "Student Directory" },
-  { icon: BarChart2, label: "Analytics" },
-  { icon: Box, label: "Resource Library" },
+  { icon: AlignJustify, label: "Dashboard", href: "/teacher/dashboard" },
+  { icon: BookOpen, label: "View Quiz", href: "/teacher/quiz/view" },
+  { icon: PencilLine, label: "Quiz Builder", href: "/teacher/quiz/create" },
+  { icon: BookText, label: "Student Directory", href: "/teacher/student-directory" },
+  { icon: BarChart2, label: "Analytics", href: "/teacher/analytics" },
+  { icon: Box, label: "Resource Library", href: "/teacher/resource-library" },
 ];
 
 const studentNavItems = [
-  { icon: AlignJustify, label: "Dashboard" },
-  { icon: BookOpen, label: "Take Quiz" },
-  { icon: Notebook, label: "Study Materials" },
-  { icon: TrendingUp, label: "Performance" },
-  { icon: Star, label: "Achievements" },
+  { icon: AlignJustify, label: "Dashboard", href: "/student/dashboard" },
+  { icon: BookOpen, label: "View Quiz", href: "/student/quiz/view" },
+  { icon: Notebook, label: "Study Materials", href: "/student/study-materials" },
+  { icon: TrendingUp, label: "Performance", href: "/student/performance" },
+  { icon: Star, label: "Achievements", href: "/student/achievements" },
 ];
 
 export function Sidebar() {
@@ -64,9 +59,10 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 mt-6 space-y-0.5 p-3">
-        {navItems.map(({ icon: Icon, label }) => {
-          const href = getPath(label);
-          const isActive = pathname === href;
+        {navItems.map(({ icon: Icon, label, href }) => {
+          const isActive = label === "Dashboard" 
+          ? pathname === href 
+          : pathname.startsWith(href);
 
           return (
             <Link

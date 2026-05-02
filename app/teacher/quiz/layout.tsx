@@ -1,5 +1,4 @@
 import { Sidebar } from "@/components/ui/Sidebar";
-import TopBar from "@/components/ui/Topbar";
 
 export default function RootLayout({
   children,

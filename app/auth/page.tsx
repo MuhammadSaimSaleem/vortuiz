@@ -273,7 +273,7 @@ export default function AuthPage() {
 
             {/* ── Submit ── */}
             <Button asChild className="w-full h-11 bg-brand-dark hover:bg-hover:bg-brand-bluete font-semibold text-sm rounded-xl transition-colors mt-1">
-              <Link href={'/dashboard'}>{tab === "login" ? "Log in to QuizFlow" : "Create Account"}</Link>
+              <Link href={'/student/dashboard'}>{tab === "login" ? "Log in to QuizFlow" : "Create Account"}</Link>
             </Button>
 
             {/* ── Footer link ── */}

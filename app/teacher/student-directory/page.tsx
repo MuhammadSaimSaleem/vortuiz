@@ -349,9 +349,9 @@ export default function StudentRoster() {
 
   const allGroups = useMemo(() => {
     const set = new Set<string>();
-    SEED_STUDENTS.forEach((s) => s.groups.forEach((g) => set.add(g)));
+    students.forEach((s) => s.groups.forEach((g) => set.add(g)));
     return Array.from(set).sort();
-  }, []);
+  }, [students]);
 
   const filtered = useMemo(() => {
     let list = [...students];
@@ -386,10 +386,17 @@ export default function StudentRoster() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   // reset page when filter/sort changes
-  useEffect(() => {
+  const handleGroupFilter = (v: string) => {
+    setGroupFilter(v);
     setCurrentPage(1);
     setSelectedRows([]);
-  }, [groupFilter, sortKey]);
+  };
+
+  const handleSortKey = (v: string) => {
+    setSortKey(v);
+    setCurrentPage(1);
+    setSelectedRows([]);
+  };
 
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -488,7 +495,7 @@ export default function StudentRoster() {
         <StudentProfile
           student={toProfileData(student)}
           onBack={() => setView({ type: "roster" })}
-          onMessage={(s) => {
+          onMessage={() => {
             // reuse your existing message dialog:
             setView({ type: "roster" });
             openMessageDialog([student]);
@@ -513,10 +520,7 @@ export default function StudentRoster() {
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap w-full">
             <div className="flex gap-3">
               {/* Group Filter */}
-              <Select
-                value={groupFilter}
-                onValueChange={(v) => setGroupFilter(v)}
-              >
+              <Select value={groupFilter} onValueChange={handleGroupFilter}>
                 <SelectTrigger className="w-44 bg-white border border-border rounded-lg text-sm font-medium">
                   <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="All Groups" />
@@ -532,7 +536,7 @@ export default function StudentRoster() {
               </Select>
 
               {/* Sort */}
-              <Select value={sortKey} onValueChange={(v) => setSortKey(v)}>
+              <Select value={sortKey} onValueChange={handleSortKey}>
                 <SelectTrigger className="w-52 bg-white border border-border rounded-lg text-sm font-medium">
                   <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Performance (High-Low)" />
