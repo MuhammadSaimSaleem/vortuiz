@@ -213,7 +213,7 @@ function NotifItem({
           {/* Footer */}
           <div className="border-t border-border">
             <Link
-              href="/notifications"
+              href="#"
               onClick={() => setOpen(false)}
               className="flex items-center justify-center gap-2 py-4 text-sm font-bold text-brand-navy hover:bg-slate-50 transition-colors"
             >
