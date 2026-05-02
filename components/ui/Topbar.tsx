@@ -1,13 +1,12 @@
 "use client";
 
-import { Bell, Search, Settings, LogOut, User } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -18,14 +17,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import NotificationDropdown from "./NotificationModal";
+import { useState } from "react";
 
 export default function TopBar({ onSaveDraft, onPublish, showActions }: {
   onSaveDraft?: () => void;
   onPublish?: () => void;
   showActions?: boolean;
 }) {
+
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-white px-6 py-2">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-white px-6 py-4">
       <div className="relative w-80">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <Input placeholder="Search quizzes or topics..."
@@ -44,22 +48,15 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
             </Button>
           </>
         )}
-        <Tooltip>
+        <Tooltip open={isNotifOpen ? false : undefined}>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Bell className="h-4 w-4 text-slate-500" />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-            </Button>
+             <div> {/* Wrapped in a div to ensure TooltipTrigger has a clean target */}
+                <NotificationDropdown open={isNotifOpen} setOpen={setIsNotifOpen}/>
+             </div>
           </TooltipTrigger>
-          <TooltipContent className="bg-brand-navy text-white border-none shadow-lg"><p>Notifications</p></TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Settings className="h-4 w-4 text-slate-500" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="bg-brand-navy text-white border-none shadow-lg"><p>Settings</p></TooltipContent>
+          <TooltipContent className="bg-brand-navy text-white border-none shadow-lg">
+            <p>Notifications</p>
+          </TooltipContent>
         </Tooltip>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -69,7 +66,7 @@ export default function TopBar({ onSaveDraft, onPublish, showActions }: {
               </Avatar>
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 mt-2">
+          <DropdownMenuContent align="end" className="w-46 mt-2">
             <DropdownMenuLabel>Abdullah SK</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
