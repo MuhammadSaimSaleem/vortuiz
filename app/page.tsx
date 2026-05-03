@@ -11,7 +11,6 @@ import {
   Cpu,
   Globe,
   GraduationCap,
-  PhoneCall,
   Hash,
   Layers,
   LayoutDashboard,
@@ -20,27 +19,13 @@ import {
   Sparkles,
   Target,
   Trophy,
-  Headset,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-
-// ─── Animated counter ────────────────────────────────────────────────────────
-function useCountUp(target: number, duration = 1200, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number;
-    const step = (ts: number) => {
-      if (!startTime) startTime = ts;
-      const progress = Math.min((ts - startTime) / duration, 1);
-      setCount(Math.floor(progress * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [start, target, duration]);
-  return count;
-}
+import Image from "next/image";
+import Navbar from "@/components/ui/NavBar";
+import Footer from "@/components/ui/Footer";
+import OfficeLady from '@/assets/images/office-lady.png';
 
 // ─── Intersection observer hook ──────────────────────────────────────────────
 function useInView(threshold = 0.15) {
@@ -88,56 +73,23 @@ const learnerFeatures = [
   { icon: Trophy, title: "Achievements & Progress", desc: "Visual rewards and streaks keep you motivated as you advance through the curriculum." },
 ];
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", fn);
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-
-  return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-border" : "bg-white border-b border-border"
-      }`}
-    >
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <span className="font-bold text-lg text-brand-dark tracking-tight">Vortuiz</span>
-        <nav className="hidden md:flex items-center gap-7 text-sm text-slate-500 font-medium">
-          {["Features", "Teachers", "Students", "Pricing"].map((item) => (
-            <a key={item} href="#" className="hover:text-brand-dark transition-colors">{item}</a>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm" className="text-sm font-medium text-slate-600"><Link href={'/auth'}>Login</Link></Button>
-          <Button asChild size="sm" className="bg-brand-dark hover:bg-brand-blue text-white text-sm font-semibold rounded-lg transition-colors">
-            <Link href={'/auth'}>Get Started</Link>
-          </Button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="max-w-6xl mx-auto px-6 pt-16 pb-20 grid md:grid-cols-2 gap-10 items-center">
+    <section className="max-w-300 mx-auto px-6 pt-16 pb-20 grid md:grid-cols-2 gap-10 items-center">
       {/* Left */}
       <div>
         <Badge className="mb-5 bg-brand-light text-brand-blue border-0 text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full">
           ✦ Learning Innovation
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold text-brand-dark leading-[1.12] tracking-tight mb-5">
+        <h1 className="text-4xl md:text-5xl font-bold text-brand-navy leading-[1.12] tracking-tight mb-5">
           Empower Learning Through Interactive Assessments
         </h1>
         <p className="text-slate-500 text-base leading-relaxed mb-8 max-w-md">
           Vortuiz bridges the gap between instruction and mastery. Create engaging quizzes in minutes, track progress in real-time, and foster a state of cognitive flow.
         </p>
         <div className="flex items-center gap-3 mb-7">
-          <Button asChild className="bg-brand-dark hover:bg-brand-blue text-white font-semibold px-5 h-11 rounded-xl transition-colors text-sm">
+          <Button asChild className="bg-brand-navy hover:bg-brand-blue text-white font-semibold px-5 h-11 rounded-xl transition-colors text-sm">
             <Link href={'/auth'}>Start Your Free Trial</Link>
           </Button>
           <Button asChild variant="outline" className="border-border text-slate-600 font-semibold px-5 h-11 rounded-xl text-sm gap-2 hover:bg-slate-50">
@@ -162,21 +114,14 @@ function Hero() {
 
       {/* Right — dark UI card mockup */}
       <div className="relative">
-        <div className="relative rounded-2xl overflow-hidden bg-slate-900 shadow-2xl border border-slate-700 aspect-4/3">
-          {/* Glowing circle */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-44 h-44">
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-400/60" style={{ boxShadow: "0 0 40px 8px rgba(34,211,238,0.18)" }} />
-              <div className="absolute inset-6 rounded-full border border-cyan-400/30" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1 h-14 bg-cyan-400/80 rounded-full rotate-[-30deg] origin-bottom -translate-y-7" />
-              </div>
-            </div>
-          </div>
-          {/* Bottom bar */}
-          <div className="absolute bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-sm border-t border-slate-700 px-4 py-2.5">
-            <p className="text-xs text-slate-300 font-mono truncate">Solar Transit: Verify Entry/Photons</p>
-          </div>
+        <div className="relative rounded-2xl overflow-hidden bg-brand-dark shadow-2xl">
+          <Image 
+            src={OfficeLady} 
+            alt="Office Lady Illustration" 
+            width={1400} 
+            height={700}
+            className="w-full" 
+          />
         </div>
 
         {/* Floating live insight card */}
@@ -185,7 +130,7 @@ function Hero() {
             <BarChart2 className="h-4 w-4 text-brand-blue" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-brand-dark">Live Insight</p>
+            <p className="text-[11px] font-semibold text-brand-navy">Live Insight</p>
             <p className="text-[11px] text-slate-400">83% Class Participation</p>
           </div>
         </div>
@@ -215,9 +160,9 @@ function TrustedBy() {
 // ─── Features section ─────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section className="max-w-6xl mx-auto px-6 py-24">
+    <section className="max-w-300 mx-auto px-6 py-24">
       <FadeIn className="text-center mb-14">
-        <h2 className="text-3xl font-bold text-brand-dark tracking-tight mb-3">
+        <h2 className="text-3xl font-bold text-brand-navy tracking-tight mb-3">
           Precision-Engineered Learning Tools
         </h2>
         <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
@@ -232,7 +177,7 @@ function Features() {
           <div className="h-9 w-9 rounded-xl bg-brand-light flex items-center justify-center mb-5">
             <BookOpen className="h-4 w-4 text-brand-blue" />
           </div>
-          <h3 className="font-bold text-brand-dark text-base mb-2">Intuitive Quiz Builder</h3>
+          <h3 className="font-bold text-brand-navy text-base mb-2">Intuitive Quiz Builder</h3>
           <p className="text-sm text-slate-400 leading-relaxed flex-1">
             Create diverse question types from multiple choice to fill-in-the-blanks with our drag-and-drop interface. Powered by AI suggestions to help you build assessments faster.
           </p>
@@ -255,7 +200,7 @@ function Features() {
         </FadeIn>
 
         {/* Instant Access Codes */}
-        <FadeIn delay={160} className="rounded-2xl bg-brand-dark p-7 flex flex-col text-white">
+        <FadeIn delay={160} className="rounded-2xl bg-brand-navy p-7 flex flex-col text-white">
           <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center mb-5">
             <Hash className="h-4 w-4 text-white" />
           </div>
@@ -276,7 +221,7 @@ function Features() {
           <div className="h-9 w-9 rounded-xl bg-brand-light flex items-center justify-center mb-5">
             <BarChart2 className="h-4 w-4 text-brand-blue" />
           </div>
-          <h3 className="font-bold text-brand-dark text-base mb-2">Real-time Analytics</h3>
+          <h3 className="font-bold text-brand-navy text-base mb-2">Real-time Analytics</h3>
           <p className="text-sm text-slate-400 leading-relaxed flex-1">
             Watch results flow in live. Identify knowledge gaps instantly with heatmaps and difficulty distribution charts.
           </p>
@@ -301,11 +246,11 @@ function Features() {
 
         {/* Seamless Integration */}
         <FadeIn delay={160} className="rounded-2xl border border-border bg-white p-7 flex flex-col">
-          <h3 className="font-bold text-brand-dark text-base mb-2">Seamless Integration</h3>
+          <h3 className="font-bold text-brand-navy text-base mb-2">Seamless Integration</h3>
           <p className="text-sm text-slate-400 leading-relaxed flex-1">
             Vortuiz works where you work. Export grades directly to Canvas, Google Classroom, and Moodle with a single click.
           </p>
-          <Button className="mt-5 bg-brand-dark hover:bg-brand-blue text-white text-xs font-semibold rounded-lg h-9 self-start px-4 transition-colors">
+          <Button className="mt-5 bg-brand-navy hover:bg-brand-blue text-white text-xs font-semibold rounded-lg h-9 self-start px-4 transition-colors">
             View All Integrations
           </Button>
         </FadeIn>
@@ -318,13 +263,13 @@ function Features() {
 function AudienceSplit() {
   return (
     <section className="border-t border-border bg-slate-50 py-24">
-      <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16">
+      <div className="max-w-300 mx-auto px-6 grid md:grid-cols-2 gap-16">
         {/* Educators */}
         <FadeIn>
           <Badge className="mb-5 bg-brand-light text-brand-blue border-0 text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full gap-1.5">
             <GraduationCap className="h-3 w-3" /> For Educators
           </Badge>
-          <h2 className="text-2xl font-bold text-brand-dark tracking-tight mb-8">
+          <h2 className="text-2xl font-bold text-brand-navy tracking-tight mb-8">
             Master Your Classroom Insight
           </h2>
           <div className="space-y-7">
@@ -334,7 +279,7 @@ function AudienceSplit() {
                   <Icon className="h-4 w-4 text-brand-blue" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-brand-dark mb-1">{title}</p>
+                  <p className="text-sm font-bold text-brand-navy mb-1">{title}</p>
                   <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
                 </div>
               </FadeIn>
@@ -347,7 +292,7 @@ function AudienceSplit() {
           <Badge className="mb-5 bg-orange-50 text-orange-500 border-0 text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full gap-1.5">
             <Cpu className="h-3 w-3" /> For Learners
           </Badge>
-          <h2 className="text-2xl font-bold text-brand-dark tracking-tight mb-8">
+          <h2 className="text-2xl font-bold text-brand-navy tracking-tight mb-8">
             Study Smarter, Not Harder
           </h2>
           <div className="space-y-7">
@@ -357,7 +302,7 @@ function AudienceSplit() {
                   <Icon className="h-4 w-4 text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-brand-dark mb-1">{title}</p>
+                  <p className="text-sm font-bold text-brand-navy mb-1">{title}</p>
                   <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
                 </div>
               </FadeIn>
@@ -374,7 +319,7 @@ function CTA() {
   return (
     <section className="py-24 px-6">
       <FadeIn>
-        <div className="max-w-3xl mx-auto rounded-3xl bg-brand-dark px-8 py-16 text-center relative overflow-hidden">
+        <div className="max-w-3xl mx-auto rounded-3xl bg-brand-navy px-8 py-16 text-center relative overflow-hidden">
           {/* Decorative blobs */}
           <div className="absolute -top-16 -left-16 w-56 h-56 rounded-full bg-white/5 pointer-events-none" />
           <div className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
@@ -388,10 +333,10 @@ function CTA() {
               Join thousands of educators who are transforming the way they assess and engage their students with Vortuiz.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 mb-5">
-              <Button asChild className="bg-white text-brand-dark hover:bg-blue-50 font-semibold px-6 h-11 rounded-xl text-sm transition-colors">
+              <Button asChild className="bg-white text-brand-navy hover:bg-blue-50 font-semibold px-6 h-11 rounded-xl text-sm transition-colors">
                 <Link href={'/auth'}>Start Your Journey Today</Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/30 text-black hover:text-white hover:bg-white/10 font-semibold px-6 h-11 rounded-xl text-sm">
+              <Button asChild variant="outline" className="border-white/30 text-white hover:text-white hover:bg-white/10 font-semibold px-6 h-11 rounded-xl text-sm">
                 <Link href={'/auth'}>Schedule a Demo</Link>
               </Button>
             </div>
@@ -400,33 +345,6 @@ function CTA() {
         </div>
       </FadeIn>
     </section>
-  );
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-function Footer() {
-  return (
-    <footer className="border-t border-border bg-white py-8 px-6">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <p className="font-bold text-brand-dark text-base mb-0.5">Vortuiz</p>
-          <p className="text-xs text-slate-400">© 2026 Vortuiz. Empowering learners globally.</p>
-        </div>
-        <nav className="flex flex-wrap items-center gap-5 text-xs text-slate-400">
-          {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((item) => (
-            <a key={item} href="#" className="hover:text-slate-600 transition-colors">{item}</a>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          <a href="#" className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-slate-400 hover:text-brand-dark hover:border-brand-dark transition-colors">
-            <Headset className="h-3.5 w-3.5" />
-          </a>
-          <a href="#" className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-slate-400 hover:text-brand-dark hover:border-brand-dark transition-colors">
-            <PhoneCall className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </div>
-    </footer>
   );
 }
 

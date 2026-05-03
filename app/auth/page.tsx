@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import Navbar from "@/components/ui/NavBar";
+import Footer from "@/components/ui/Footer";
 
 export default function AuthPage() {
   const [tab, setTab] = useState<"login" | "signup">("login");
@@ -16,30 +18,8 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
-      {/* ── Navbar ── */}
-      <header className="h-14 flex items-center justify-between px-8 border-b border-border bg-white">
-        <span className="text-brand-dark font-bold text-lg tracking-tight">
-          QuizFlow
-        </span>
-        <nav className="hidden md:flex items-center gap-7 text-sm text-slate-500 font-medium">
-          {["Features", "Teachers", "Students", "Pricing"].map((item) => (
-            <a key={item} href="#" className="hover:text-brand-dark transition-colors">
-              {item}
-            </a>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="text-sm font-medium text-slate-600">
-            Login
-          </Button>
-          <Button
-            size="sm"
-            className="bg-brand-dark hover:bg-brand-blue text-white text-sm font-semibold rounded-lg transition-colors"
-          >
-            Get Started
-          </Button>
-        </div>
-      </header>
+      
+      <Navbar/>
 
       {/* ── Main ── */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
@@ -88,13 +68,13 @@ export default function AuthPage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-blue mb-1">
               {tab === "login" ? "Welcome back" : "Get started"}
             </p>
-            <h1 className="text-xl font-bold text-brand-dark mb-1">
+            <h1 className="text-xl font-bold text-brand-navy mb-1">
               {tab === "login" ? "Welcome back" : "Create your account"}
             </h1>
             <p className="text-sm text-slate-400 mb-6">
               {tab === "login"
                 ? "Enter your details to access your dashboard."
-                : "Fill in the details below to join QuizFlow."}
+                : "Fill in the details below to join Vortuiz."}
             </p>
 
             {/* ── Tab switcher ── */}
@@ -109,7 +89,7 @@ export default function AuthPage() {
                   key={t}
                   onClick={() => setTab(t)}
                   className={`relative z-10 flex-1 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 ${
-                    tab === t ? "text-brand-dark" : "text-slate-400 hover:text-slate-600"
+                    tab === t ? "text-brand-navy" : "text-slate-400 hover:text-slate-600"
                   }`}
                 >
                   {t === "login" ? "Login" : "Sign Up"}
@@ -212,7 +192,7 @@ export default function AuthPage() {
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder={tab === 'login' ? "••••••••" : "Create password"}
-                    className="h-10 text-sm border-border focus-visible:ring-brand-blue pr-10"
+                    className="h-10 text-sm border-border focus-visible:ring-brand-blue pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   />
                   <button
                     type="button"
@@ -262,7 +242,7 @@ export default function AuthPage() {
                     id="keep"
                     checked={keep}
                     onCheckedChange={(v) => setKeep(!!v)}
-                    className="border-slate-300 data-[state=checked]:bg-brand-dark data-[state=checked]:border-brand-dark"
+                    className="border-slate-300 data-[state=checked]:bg-brand-navy data-[state=checked]:border-brand-navy"
                   />
                   <label htmlFor="keep" className="text-sm text-slate-500 cursor-pointer select-none">
                     Keep me logged in for 30 days
@@ -272,18 +252,18 @@ export default function AuthPage() {
             </div>
 
             {/* ── Submit ── */}
-            <Button asChild className="w-full h-11 bg-brand-dark hover:bg-hover:bg-brand-bluete font-semibold text-sm rounded-xl transition-colors mt-1">
-              <Link href={'/student/dashboard'}>{tab === "login" ? "Log in to QuizFlow" : "Create Account"}</Link>
+            <Button asChild className="w-full h-11 bg-brand-navy hover:bg-hover:bg-brand-bluete font-semibold text-sm rounded-xl transition-colors mt-1">
+              <Link href={'/student/dashboard'}>{tab === "login" ? "Log in to Vortuiz" : "Create Account"}</Link>
             </Button>
 
             {/* ── Footer link ── */}
             <p className="text-center text-sm text-slate-400 mt-5">
               {tab === "login" ? (
                 <>
-                  New to QuizFlow?{" "}
+                  New to Vortuiz?{" "}
                   <button
                     onClick={() => setTab("signup")}
-                    className="font-semibold text-brand-dark hover:underline"
+                    className="font-semibold text-brand-navy hover:underline"
                   >
                     Create an account
                   </button>
@@ -293,7 +273,7 @@ export default function AuthPage() {
                   Already have an account?{" "}
                   <button
                     onClick={() => setTab("login")}
-                    className="font-semibold text-brand-dark hover:underline"
+                    className="font-semibold text-brand-navy hover:underline"
                   >
                     Log in
                   </button>
@@ -304,19 +284,7 @@ export default function AuthPage() {
         </div>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-border bg-white px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-600">
-          © 2026 QuizFlow. Empowering learners globally.
-        </p>
-        <nav className="flex items-center gap-5 text-sm text-slate-400">
-          {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((item) => (
-            <a key={item} href="#" className="hover:text-slate-600 transition-colors">
-              {item}
-            </a>
-          ))}
-        </nav>
-      </footer>
+      <Footer/>
     </div>
   );
 }
