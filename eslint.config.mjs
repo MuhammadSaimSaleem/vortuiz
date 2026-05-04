@@ -5,13 +5,20 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // --- Add these below ---
+    "node_modules/**",     // Essential to prevent linting external libraries
+    "public/**",           // Static assets like images/fonts don't need linting
+    "dist/**",             // Compiled code
+    ".cache/**",           // Development cache files
+    ".vscode/**",          // Editor settings
+    "*.config.js",         // Configuration files (tailwind, next, etc.)
+    "*.config.ts",
+    "coverage/**",         // Testing reports
   ]),
 ]);
 

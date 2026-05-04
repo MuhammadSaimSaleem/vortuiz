@@ -112,7 +112,7 @@ function JoinQuizBanner() {
   const [code, setCode] = useState("");
 
   return (
-    <div className="rounded-2xl bg-brand-dark px-8 py-8 flex flex-col justify-center relative overflow-hidden">
+    <div className="rounded-2xl bg-brand-navy px-8 py-8 flex flex-col justify-center relative overflow-hidden">
       {/* Background blobs */}
       <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5 pointer-events-none" />
       <div className="absolute bottom-0 right-12 w-24 h-24 rounded-full bg-white/5 pointer-events-none" />
@@ -129,7 +129,7 @@ function JoinQuizBanner() {
           className="h-12 bg-white/10 border-white/20 text-white placeholder:text-blue-300/60 placeholder:text-xs placeholder:font-semibold placeholder:tracking-widest focus-visible:ring-white/30 rounded-xl text-sm font-mono"
         />
         <Link href={code ? `/quiz/join/${code}` : "#"}>
-          <Button className="h-12 px-6 bg-white text-brand-dark hover:bg-blue-50 font-bold text-sm rounded-xl shrink-0 transition-colors">
+          <Button className="h-12 px-6 bg-white text-brand-bg-brand-navy hover:bg-blue-50 font-bold text-sm rounded-xl shrink-0 transition-colors">
             Join Quiz
           </Button>
         </Link>
@@ -146,12 +146,12 @@ function OverallProgress() {
         Overall Progress
       </p>
       <div>
-        <p className="text-3xl font-bold text-brand-dark mb-4">84% Mastery</p>
+        <p className="text-3xl font-bold text-brand-bg-brand-navy mb-4">84% Mastery</p>
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-slate-400">Quizzes Completed</span>
-          <span className="font-bold text-brand-dark">12/15</span>
+          <span className="font-bold text-brand-bg-brand-navy">12/15</span>
         </div>
-        <Progress value={80} className="h-2.5 rounded-full bg-slate-100 [&>div]:bg-brand-dark [&>div]:rounded-full" />
+        <Progress value={80} className="h-2.5 rounded-full bg-slate-100 [&>div]:bg-brand-navy [&>div]:rounded-full" />
         <p className="text-xs text-slate-400 mt-3 italic">You&apos;re in the top 5% this month!</p>
       </div>
     </div>
@@ -167,7 +167,7 @@ function AssignedQuizzes() {
           <div className="h-6 w-6 rounded-md bg-brand-light flex items-center justify-center">
             <Scroll className="h-3.5 w-3.5 text-brand-blue" />
           </div>
-          <h2 className="text-base font-bold text-brand-dark">Assigned Quizzes</h2>
+          <h2 className="text-base font-bold text-brand-bg-brand-navy">Assigned Quizzes</h2>
         </div>
         <div className="flex items-center gap-4">
           <Link href="/quizzes" className="text-xs font-semibold text-slate-400 hover:text-brand-blue transition-colors">
@@ -199,7 +199,7 @@ function AssignedQuizzes() {
             </div>
 
             <div>
-              <p className="font-bold text-brand-dark text-base leading-tight mb-1">{quiz.title}</p>
+              <p className="font-bold text-brand-bg-brand-navy text-base leading-tight mb-1">{quiz.title}</p>
               <p className="text-xs text-slate-400">{quiz.subtitle}</p>
             </div>
 
@@ -207,7 +207,7 @@ function AssignedQuizzes() {
               {quiz.participants ? (
                 <div className="flex items-center gap-1.5">
                   <Avatar className="h-6 w-6">
-                    <AvatarFallback className="bg-brand-dark text-white text-[9px]">U</AvatarFallback>
+                    <AvatarFallback className="bg-brand-navy text-white text-[9px]">U</AvatarFallback>
                   </Avatar>
                   <span className="text-xs text-slate-400 font-medium">+{quiz.participants}</span>
                 </div>
@@ -220,7 +220,7 @@ function AssignedQuizzes() {
                 <span />
               )}
               <Link href={`/quiz/${quiz.id}/take`}>
-                <Button className="bg-brand-dark hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
+                <Button className="bg-brand-navy hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
                   Take Now
                 </Button>
               </Link>
@@ -246,7 +246,7 @@ function PerformanceScores() {
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{item.subject}</p>
-            <p className="text-sm font-bold text-brand-dark">{item.score}</p>
+            <p className="text-sm font-bold text-brand-bg-brand-navy">{item.score}</p>
           </div>
         </div>
       ))}
@@ -263,7 +263,7 @@ function BrowseLibrary() {
           <div className="h-6 w-6 rounded-md bg-brand-light flex items-center justify-center">
             <BookOpen className="h-3.5 w-3.5 text-brand-blue" />
           </div>
-          <h2 className="text-base font-bold text-brand-dark">Browse Quiz Library</h2>
+          <h2 className="text-base font-bold text-brand-bg-brand-navy">Browse Quiz Library</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8 border-border rounded-lg">
@@ -283,7 +283,7 @@ function BrowseLibrary() {
             >
               <span className={cat.iconColor}>{cat.icon}</span>
             </div>
-            <span className="text-sm font-medium text-slate-600 group-hover:text-brand-dark transition-colors">
+            <span className="text-sm font-medium text-slate-600 group-hover:text-brand-bg-brand-navy transition-colors">
               {cat.label}
             </span>
           </Link>
@@ -300,7 +300,7 @@ function Footer() {
       <p className="text-xs text-slate-400">© 202 QuizStudio. Elevating the learning experience.</p>
       <nav className="flex items-center gap-5 text-xs text-slate-400">
         {["Privacy Policy", "Terms of Service", "Student Handbook"].map((item) => (
-          <Link key={item} href="#" className="hover:text-brand-dark transition-colors">
+          <Link key={item} href="#" className="hover:text-brand-bg-brand-navy transition-colors">
             {item}
           </Link>
         ))}

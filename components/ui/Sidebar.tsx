@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { usePathname, useRouter } from "next/navigation";
 import { useUserRole } from "@/contexts/UserRoleContext";
 import {
   AlignJustify,
@@ -14,24 +13,24 @@ import {
   LogOut,
   PencilLine,
   Star,
-  Zap,
 } from "lucide-react";
+import Logo from "./Logo";
 
 const teacherNavItems = [
-  { icon: AlignJustify, label: "Dashboard", href: "/teacher/dashboard" },
-  { icon: BookOpen, label: "View Quiz", href: "/teacher/quiz/view" },
-  { icon: PencilLine, label: "Quiz Builder", href: "/teacher/quiz/create" },
-  { icon: BookText, label: "Student Directory", href: "/teacher/student-directory" },
-  { icon: BarChart2, label: "Performance Analytics", href: "/teacher/analytics" },
-  { icon: Box, label: "Resource Library", href: "/teacher/resource-library" },
+  { icon: AlignJustify, label: "Dashboard", href: "/teachers/dashboard" },
+  { icon: BookOpen, label: "View Quiz", href: "/teachers/quiz/view" },
+  { icon: PencilLine, label: "Quiz Builder", href: "/teachers/quiz/create" },
+  { icon: BookText, label: "Student Directory", href: "/teachers/student-directory" },
+  { icon: BarChart2, label: "Performance Analytics", href: "/teachers/analytics" },
+  { icon: Box, label: "Resource Library", href: "/teachers/resource-library" },
 ];
 
 const studentNavItems = [
-  { icon: AlignJustify, label: "Dashboard", href: "/student/dashboard" },
-  { icon: BookOpen, label: "View Quiz", href: "/student/quiz/view" },
-  { icon: BarChart2, label: "Performance Analytics", href: "/student/analytics" },
-  { icon: Box, label: "Resource Library", href: "/student/resource-library" },
-  { icon: Star, label: "Achievements", href: "/student/achievements" },
+  { icon: AlignJustify, label: "Dashboard", href: "/students/dashboard" },
+  { icon: BookOpen, label: "View Quiz", href: "/students/quiz/view" },
+  { icon: BarChart2, label: "Performance Analytics", href: "/students/analytics" },
+  { icon: Box, label: "Resource Library", href: "/students/resource-library" },
+  { icon: Star, label: "Achievements", href: "/students/achievements" },
 ];
 
 export function Sidebar() {
@@ -40,19 +39,23 @@ export function Sidebar() {
 
   const navItems = role === "teacher" ? teacherNavItems : studentNavItems;
 
+  const router = useRouter();
+
+  const handleLogoClick = () => {
+    const nextRole = role === "teacher" ? "student" : "teacher";
+    
+    toggleRole(); 
+    
+    router.push(`/${nextRole}s/dashboard`);
+  };
+
   return (
     <aside className="inset-y-0 left-0 z-20 w-full h-full md:w-64 flex flex-col border-r border-slate-200 bg-white">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-4">
-        <Button
-          onClick={toggleRole}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1e3a6e]"
-        >
-          <Zap className="h-4 w-4 text-white" />
-        </Button>
-        <div>
-          <p className="text-lg font-bold text-slate-800 leading-none">Vortuiz</p>
-        </div>
+        <button onClick={handleLogoClick} type="button">
+          <Logo />
+        </button>
       </div>
 
       {/* Nav */}

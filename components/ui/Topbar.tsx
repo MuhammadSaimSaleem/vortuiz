@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import NotificationDropdown from "./NotificationModal";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function TopBar(){
 
@@ -53,7 +54,9 @@ export default function TopBar(){
           <DropdownMenuContent align="end" className="w-46 mt-2">
             <DropdownMenuLabel>Abdullah SK</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <Link href={"/profile"}>
+              <DropdownMenuItem>Profile</DropdownMenuItem>
+            </Link>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-red-500">Logout</DropdownMenuItem>

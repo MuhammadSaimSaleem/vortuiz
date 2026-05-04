@@ -253,7 +253,7 @@ export default function AuthPage() {
 
             {/* ── Submit ── */}
             <Button asChild className="w-full h-11 bg-brand-navy hover:bg-hover:bg-brand-bluete font-semibold text-sm rounded-xl transition-colors mt-1">
-              <Link href={'/student/dashboard'}>{tab === "login" ? "Log in to Vortuiz" : "Create Account"}</Link>
+              <Link href={tab === 'login' ? '/students/dashboard' : '/auth/roles'}>{tab === "login" ? "Log in to Vortuiz" : "Create Account"}</Link>
             </Button>
 
             {/* ── Footer link ── */}
