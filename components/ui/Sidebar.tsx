@@ -15,6 +15,7 @@ import {
   Star,
 } from "lucide-react";
 import Logo from "./Logo";
+import { createClient } from "@/lib/supabase/client";
 
 const teacherNavItems = [
   { icon: AlignJustify, label: "Dashboard", href: "/teachers/dashboard" },
@@ -48,6 +49,20 @@ export function Sidebar() {
     
     router.push(`/${nextRole}s/dashboard`);
   };
+
+  const handleLogOut = async () => {
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error("Error logging out:", error.message);
+    } else {
+      // 2. Redirect the user to the login page or home
+      router.push("/auth");
+      router.refresh(); // Clears any server-side cached data
+    }
+  }
 
   return (
     <aside className="inset-y-0 left-0 z-20 w-full h-full md:w-64 flex flex-col border-r border-slate-200 bg-white">
@@ -91,7 +106,10 @@ export function Sidebar() {
           <HelpCircle className="h-4 w-4" />
           Help Center
         </Link>
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50">
+        <button 
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
+          onClick={handleLogOut}
+        >
           <LogOut className="h-4 w-4" />
           Logout
         </button>

@@ -6,14 +6,26 @@
  */
 export type UserRole = 'student' | 'teacher' | 'admin';
 
-export interface UserProfile {
+export interface Profile {
   id: string;
-  email: string;
-  full_name: string;
-  role: UserRole;
-  avatar_url?: string;
-  organization?: string;
-  created_at: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  institution: string | null;
+  role: string | null;
+  avatar_initials: string | null;
+  // Security / preferences stored in the same row
+  two_factor_enabled: boolean | null;
+  email_notifications: boolean | null;
+  push_notifications: boolean | null;
+  sms_alerts: boolean | null;
+  profile_visibility: string | null;
+  dark_mode: string | null;
+  language: string | null;
+  // Connected accounts (stored as simple booleans / metadata)
+  connected_google: boolean | null;
+  connected_microsoft: boolean | null;
+  password_last_changed_days: number | null;
 }
 
 /**
