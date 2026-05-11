@@ -331,8 +331,13 @@ export default function AuthPage() {
         return;
       }
 
-      setSuccessMessage("Account created! Please log in.");
-      setTab("login");
+      if(user.app_metadata.provider === 'google')
+        window.location.href = `${role}s/dashboard`
+      else {
+        setSuccessMessage("Account created! Please log in.");
+        setStep('1');
+        setTab("login");
+      }
     } catch {
       setServerError("Something went wrong. Please try again.");
     } finally {

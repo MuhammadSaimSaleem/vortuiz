@@ -10,31 +10,29 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     
     // 2. Exchange the temporary code for a permanent session
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-    // Inside your auth/callback/route.ts
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!exchangeError) {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    // Check if this is a fresh signup
-    const identity = user?.identities?.[0];
-    const identityIsNew = !!identity && identity.created_at === identity.updated_at;
+      // 1. Fetch the profile, but specifically check the 'role'
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user?.id)
+        .maybeSingle();
 
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user?.id)
-      .maybeSingle();
+      // New user = identity just created AND no complete profile yet  
+      const isNewUser = !profile || !profile.role;
 
-    // New user = identity just created AND no complete profile yet  
-    const isNewUser = identityIsNew || !existingProfile;
-
-    const userData = {
-      isNewUser,
-      email: user?.email,
-      full_name: user?.user_metadata.full_name || user?.user_metadata.name,
-    };
+      const userData = {
+        isNewUser,
+        email: user?.email,
+        full_name: user?.user_metadata.full_name || user?.user_metadata.name,
+        provider: user?.app_metadata.provider,
+      };
     
-    if(!error){
+    
       return new NextResponse(
         `
         <html>
