@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,213 +15,264 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import * as LucideIcons from "lucide-react";
 import {
   BookOpen,
   Clock,
   FileText,
   Filter,
-  FlaskConical,
-  Globe,
-  Layers,
   Search,
-  Sigma,
   Star,
   Target,
-  TrendingUp,
   Zap,
   ChevronRight,
   Lock,
   PlayCircle,
+  TrendingUp,
+  Layers,
+  HelpCircle,
+  BarChart2,
+  RefreshCw,
+  ServerCrash,
+  AlertCircle,
+  Users,
+  Shield,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Difficulty = "Beginner" | "Intermediate" | "Advanced";
-type Status = "available" | "in-progress" | "completed" | "locked";
+interface Subject {
+  id: string;
+  name: string;
+  slug: string;
+  icon_name: string | null;
+  color_theme: string | null;
+}
 
 interface Quiz {
   id: string;
-  title: string;
-  subject: string;
-  subjectIcon: React.ReactNode;
-  subjectColor: string;
-  description: string;
-  difficulty: Difficulty;
-  duration: number; // mins
-  questions: number;
-  passingScore: number;
-  topics: string[];
-  status: Status;
-  rating: number;
-  coverGradient: string;
-  level: string;
-  assignedTo?: string;
+  name: string;
+  subtitle: string | null;
+  description: string | null;
+  difficulty: string | null;
+  duration_minutes: number | null;
+  passing_score: number | null;
+  participant_count: number;
+  status: string;
+  closed_at: string | null;
+  cover_gradient: string | null;
+  topics: string[] | null;
+  subject_id: string;
+  // Joined from subjects
+  subject?: Subject;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const quizzes: Quiz[] = [
-  {
-    id: "advanced-biology",
-    title: "Advanced Biology Quiz",
-    subject: "Biology",
-    subjectIcon: <FlaskConical className="h-4 w-4" />,
-    subjectColor: "bg-emerald-100 text-emerald-700",
-    description: "A comprehensive assessment covering molecular genetics, evolutionary biology, and complex cellular structures.",
-    difficulty: "Advanced",
-    duration: 45,
-    questions: 30,
-    passingScore: 70,
-    topics: ["Molecular Genetics", "Evolutionary Theory", "Cell Biology", "Photosynthesis", "Ecology", "Metabolic Pathways"],
-    status: "available",
-    rating: 4.8,
-    coverGradient: "from-blue-900 via-indigo-800 to-blue-700",
-    level: "Advanced Level",
-    assignedTo: "Alex Johnson",
-  },
-  {
-    id: "algebra-fundamentals",
-    title: "Algebra Fundamentals",
-    subject: "Mathematics",
-    subjectIcon: <Sigma className="h-4 w-4" />,
-    subjectColor: "bg-orange-100 text-orange-700",
-    description: "Master the core concepts of algebra including equations, inequalities, and functions.",
-    difficulty: "Intermediate",
-    duration: 30,
-    questions: 20,
-    passingScore: 65,
-    topics: ["Linear Equations", "Quadratics", "Functions", "Inequalities"],
-    status: "in-progress",
-    rating: 4.6,
-    coverGradient: "from-orange-900 via-amber-800 to-yellow-700",
-    level: "Intermediate Level",
-  },
-  {
-    id: "world-geography",
-    title: "World Geography",
-    subject: "Geography",
-    subjectIcon: <Globe className="h-4 w-4" />,
-    subjectColor: "bg-teal-100 text-teal-700",
-    description: "Explore physical geography, countries, capitals, climate zones and human geography concepts.",
-    difficulty: "Beginner",
-    duration: 25,
-    questions: 25,
-    passingScore: 60,
-    topics: ["Continents", "Climate Zones", "Physical Features", "Human Geography"],
-    status: "completed",
-    rating: 4.3,
-    coverGradient: "from-teal-900 via-cyan-800 to-teal-600",
-    level: "Beginner Level",
-  },
-  {
-    id: "cell-biology-intro",
-    title: "Cell Biology Intro",
-    subject: "Biology",
-    subjectIcon: <FlaskConical className="h-4 w-4" />,
-    subjectColor: "bg-emerald-100 text-emerald-700",
-    description: "Introduction to cell theory, organelles, cell division, and membrane transport.",
-    difficulty: "Beginner",
-    duration: 20,
-    questions: 15,
-    passingScore: 60,
-    topics: ["Cell Theory", "Organelles", "Mitosis", "Membrane Transport"],
-    status: "completed",
-    rating: 4.9,
-    coverGradient: "from-green-900 via-emerald-800 to-green-700",
-    level: "Beginner Level",
-  },
-  {
-    id: "calculus-derivatives",
-    title: "Calculus: Derivatives",
-    subject: "Mathematics",
-    subjectIcon: <Sigma className="h-4 w-4" />,
-    subjectColor: "bg-orange-100 text-orange-700",
-    description: "Deep dive into differential calculus — limits, derivative rules, and applications.",
-    difficulty: "Advanced",
-    duration: 60,
-    questions: 35,
-    passingScore: 75,
-    topics: ["Limits", "Derivative Rules", "Chain Rule", "Optimization"],
-    status: "locked",
-    rating: 4.7,
-    coverGradient: "from-rose-900 via-pink-800 to-rose-700",
-    level: "Advanced Level",
-  },
-  {
-    id: "literature-analysis",
-    title: "Literature Analysis",
-    subject: "English",
-    subjectIcon: <BookOpen className="h-4 w-4" />,
-    subjectColor: "bg-violet-100 text-violet-700",
-    description: "Critical reading and literary analysis of prose, poetry, and drama from world literature.",
-    difficulty: "Intermediate",
-    duration: 40,
-    questions: 22,
-    passingScore: 65,
-    topics: ["Poetry", "Prose Analysis", "Themes", "Literary Devices"],
-    status: "available",
-    rating: 4.5,
-    coverGradient: "from-violet-900 via-purple-800 to-violet-700",
-    level: "Intermediate Level",
-  },
-];
+interface QuizAttempt {
+  quiz_id: string;
+  status: string;
+  score: number | null;
+  max_score: number | null;
+  percentage: number | null;
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const difficultyConfig: Record<Difficulty, { color: string; bg: string }> = {
-  Beginner:     { color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200" },
-  Intermediate: { color: "text-amber-700",   bg: "bg-amber-50 border border-amber-200"   },
-  Advanced:     { color: "text-rose-700",    bg: "bg-rose-50 border border-rose-200"      },
+// ─── Color theme map ──────────────────────────────────────────────────────────
+const COLOR_THEMES: Record<
+  string,
+  { subjectBg: string; subjectText: string; coverGradient: string }
+> = {
+  blue:    { subjectBg: "bg-blue-100",    subjectText: "text-blue-700",    coverGradient: "from-blue-950 via-indigo-900 to-blue-800"    },
+  orange:  { subjectBg: "bg-orange-100",  subjectText: "text-orange-700",  coverGradient: "from-orange-950 via-amber-900 to-yellow-800"  },
+  emerald: { subjectBg: "bg-emerald-100", subjectText: "text-emerald-700", coverGradient: "from-green-950 via-emerald-900 to-green-800"  },
+  purple:  { subjectBg: "bg-purple-100",  subjectText: "text-purple-700",  coverGradient: "from-purple-950 via-violet-900 to-purple-800" },
+  rose:    { subjectBg: "bg-rose-100",    subjectText: "text-rose-700",    coverGradient: "from-rose-950 via-pink-900 to-rose-800"       },
+  teal:    { subjectBg: "bg-teal-100",    subjectText: "text-teal-700",    coverGradient: "from-teal-950 via-cyan-900 to-teal-800"       },
+  indigo:  { subjectBg: "bg-indigo-100",  subjectText: "text-indigo-700",  coverGradient: "from-indigo-950 via-blue-900 to-indigo-800"   },
+  amber:   { subjectBg: "bg-amber-100",   subjectText: "text-amber-700",   coverGradient: "from-amber-950 via-orange-900 to-amber-800"   },
+  slate:   { subjectBg: "bg-slate-100",   subjectText: "text-slate-600",   coverGradient: "from-slate-900 via-slate-800 to-slate-700"    },
 };
 
-const statusConfig: Record<Status, { label: string; color: string; bg: string }> = {
-  available:   { label: "Available",    color: "text-brand-blue",   bg: "bg-brand-light"              },
-  "in-progress":{ label: "In Progress", color: "text-amber-700",    bg: "bg-amber-50 border border-amber-200" },
-  completed:   { label: "Completed",    color: "text-emerald-700",  bg: "bg-emerald-50 border border-emerald-200" },
-  locked:      { label: "Locked",       color: "text-slate-500",    bg: "bg-slate-100"                },
-};
+function getTheme(colorTheme: string | null) {
+  return COLOR_THEMES[colorTheme ?? "slate"] ?? COLOR_THEMES.slate;
+}
 
-function StarRating({ rating }: { rating: number }) {
+// ─── Subject icon helpers ─────────────────────────────────────────────────────
+function toPascalCase(str: string): string {
+  return str
+    .replace(/[-_]+/g, " ")
+    .replace(/(?:^|\s)(.)/g, (_, c: string) => c.toUpperCase())
+    .replace(/\s/g, "");
+}
+
+function isValidIcon(
+  v: unknown
+): v is React.ComponentType<{ size?: number; className?: string }> {
   return (
-    <div className="flex items-center gap-1">
-      {[1,2,3,4,5].map(i => (
-        <Star key={i} className={`h-3 w-3 ${i <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"}`} />
-      ))}
-      <span className="text-xs text-slate-400 ml-0.5">{rating.toFixed(1)}</span>
+    typeof v === "function" ||
+    (typeof v === "object" && v !== null && "$$typeof" in (v as object))
+  );
+}
+
+function SubjectIcon({
+  iconName,
+  className = "",
+}: {
+  iconName: string | null;
+  className?: string;
+}) {
+  if (!iconName) return <HelpCircle className={className || "h-3.5 w-3.5 text-slate-400"} />;
+
+  const key = toPascalCase(iconName);
+  const icons = LucideIcons as Record<string, unknown>;
+  const Icon =
+    isValidIcon(icons[key])
+      ? (icons[key] as React.ComponentType<{ className?: string }>)
+      : isValidIcon(icons[`${key}Icon`])
+      ? (icons[`${key}Icon`] as React.ComponentType<{ className?: string }>)
+      : null;
+
+  if (!Icon) return <HelpCircle className={className || "h-3.5 w-3.5 text-slate-400"} />;
+  return <Icon className={className} />;
+}
+
+// ─── Difficulty helpers ───────────────────────────────────────────────────────
+function difficultyConfig(d: string | null): { label: string; color: string; bg: string } {
+  switch ((d ?? "").toLowerCase()) {
+    case "beginner":
+      return { label: "Beginner", color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200" };
+    case "intermediate":
+      return { label: "Intermediate", color: "text-amber-700", bg: "bg-amber-50 border border-amber-200" };
+    case "advanced":
+      return { label: "Advanced", color: "text-rose-700", bg: "bg-rose-50 border border-rose-200" };
+    default:
+      return { label: d ?? "Quiz", color: "text-slate-600", bg: "bg-slate-100" };
+  }
+}
+
+// ─── Attempt status badge ─────────────────────────────────────────────────────
+function AttemptBadge({ attempt }: { attempt: QuizAttempt | undefined }) {
+  if (!attempt) return null;
+  if (attempt.status === "submitted") {
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
+        Completed{attempt.percentage != null ? ` · ${Math.round(attempt.percentage)}%` : ""}
+      </span>
+    );
+  }
+  if (attempt.status === "in_progress") {
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
+        In Progress
+      </span>
+    );
+  }
+  return null;
+}
+
+// ─── Error state ──────────────────────────────────────────────────────────────
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+      <div className="h-16 w-16 rounded-2xl bg-rose-50 flex items-center justify-center">
+        <ServerCrash className="h-7 w-7 text-rose-400" />
+      </div>
+      <div>
+        <p className="font-bold text-brand-navy text-lg mb-1">Something went wrong</p>
+        <p className="text-sm text-slate-400 max-w-sm">{message}</p>
+      </div>
+      <Button
+        onClick={onRetry}
+        className="rounded-xl text-sm font-semibold gap-2 bg-brand-navy hover:bg-brand-blue text-white mt-1"
+      >
+        <RefreshCw className="h-4 w-4" />
+        Try Again
+      </Button>
     </div>
   );
 }
 
-// ─── QuizCard ─────────────────────────────────────────────────────────────────
-function QuizCard({ quiz }: { quiz: Quiz }) {
-  const diff   = difficultyConfig[quiz.difficulty];
-  const status = statusConfig[quiz.status];
-  const isLocked = quiz.status === "locked";
+// ─── Quiz Card ────────────────────────────────────────────────────────────────
+function QuizCard({
+  quiz,
+  attempt,
+}: {
+  quiz: Quiz;
+  attempt: QuizAttempt | undefined;
+}) {
+  const subject = quiz.subject;
+  const theme = getTheme(subject?.color_theme ?? null);
+  const diff = difficultyConfig(quiz.difficulty);
+  const isClosed = quiz.closed_at ? new Date(quiz.closed_at) < new Date() : false;
+  const isLocked = isClosed;
+
+  // Determine cover gradient: prefer DB value, fall back to theme
+  const coverGradient =
+    quiz.cover_gradient?.trim()
+      ? quiz.cover_gradient
+      : `bg-gradient-to-br ${theme.coverGradient}`;
+
+  // CTA href
+  const takeHref   = `/students/quiz/${quiz.id}/take`;
+  const resultsHref = `/students/quiz/${quiz.id}/results`;
+  const cardHref    = `/students/quiz/${quiz.id}/view`;
+
+  const router = useRouter();
+
+  function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
+    // Don't navigate if the click originated from the CTA button area
+    if ((e.target as HTMLElement).closest("[data-cta]")) return;
+    if (!isLocked) router.push(cardHref);
+  }
 
   return (
-    <Link href={isLocked ? "#" : `/student/quiz/view/${quiz.id}`}
+    <div
+      role="link"
+      tabIndex={isLocked ? -1 : 0}
+      onClick={handleCardClick}
+      onKeyDown={(e) => { if (e.key === "Enter" && !isLocked) router.push(cardHref); }}
       className={`group block rounded-2xl border border-border bg-white overflow-hidden transition-all duration-200
-        ${isLocked ? "opacity-60 cursor-not-allowed" : "hover:shadow-lg hover:-translate-y-0.5"}`}>
+        ${isLocked ? "opacity-60 cursor-not-allowed" : "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"}`}
+    >
       {/* Cover */}
-      <div className={`relative h-28 bg-linear-to-br ${quiz.coverGradient} overflow-hidden`}>
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: "radial-gradient(circle at 30% 70%, white 0%, transparent 50%), radial-gradient(circle at 80% 20%, white 0%, transparent 40%)" }} />
-        {/* Level badge */}
+      <div
+        className={`relative h-28 bg-linear-to-br ${coverGradient} overflow-hidden`}
+        style={
+          quiz.cover_gradient
+            ? { background: quiz.cover_gradient }
+            : undefined
+        }
+      >
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 30% 70%, white 0%, transparent 50%), radial-gradient(circle at 80% 20%, white 0%, transparent 40%)",
+          }}
+        />
+
+        {/* Difficulty badge */}
         <div className="absolute top-3 left-3">
           <span className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
             <Star className="h-2.5 w-2.5 fill-white" />
-            {quiz.level.toUpperCase()}
+            {diff.label.toUpperCase()}
           </span>
         </div>
-        {/* Status */}
+
+        {/* Status / attempt badge */}
         <div className="absolute top-3 right-3">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
-            {status.label}
-          </span>
+          <AttemptBadge attempt={attempt} />
+          {isClosed && !attempt && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">
+              Closed
+            </span>
+          )}
         </div>
+
         {/* Lock overlay */}
         {isLocked && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Lock className="h-6 w-6 text-white/80" />
           </div>
         )}
+
         {/* Play hover */}
         {!isLocked && (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
@@ -227,62 +282,318 @@ function QuizCard({ quiz }: { quiz: Quiz }) {
       </div>
 
       {/* Body */}
-      <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${quiz.subjectColor}`}>
-            {quiz.subjectIcon}{quiz.subject}
-          </span>
+      <div className="p-4 flex flex-col gap-3">
+        {/* Subject + difficulty chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {subject && (
+            <span
+              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${theme.subjectBg} ${theme.subjectText}`}
+            >
+              <SubjectIcon iconName={subject.icon_name} className="h-3 w-3" />
+              {subject.name}
+            </span>
+          )}
           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}>
-            {quiz.difficulty}
+            {diff.label}
           </span>
         </div>
 
-        <h3 className="text-sm font-bold text-brand-dark leading-tight mb-1 group-hover:text-brand-navy transition-colors">
-          {quiz.title}
-        </h3>
-        <p className="text-xs text-brand-subtitle leading-relaxed line-clamp-2 mb-3">{quiz.description}</p>
+        {/* Title + subtitle */}
+        <div>
+          <h3 className="text-sm font-bold text-brand-dark leading-tight group-hover:text-brand-navy transition-colors">
+            {quiz.name?.trim() || <span className="italic opacity-60">Untitled Quiz</span>}
+          </h3>
+          {quiz.subtitle?.trim() && (
+            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{quiz.subtitle}</p>
+          )}
+        </div>
 
-        <StarRating rating={quiz.rating} />
+        {quiz.description?.trim() && (
+          <p className="text-xs text-brand-subtitle leading-relaxed line-clamp-2">
+            {quiz.description}
+          </p>
+        )}
 
         {/* Stats row */}
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
+        <div className="flex items-center gap-3 pt-2 border-t border-border">
+          {quiz.duration_minutes != null && quiz.duration_minutes > 0 && (
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <Clock className="h-3 w-3" />
+              {quiz.duration_minutes}m
+            </div>
+          )}
           <div className="flex items-center gap-1 text-xs text-slate-400">
-            <Clock className="h-3 w-3" />{quiz.duration}m
+            <FileText className="h-3 w-3" />
+            Questions
           </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <FileText className="h-3 w-3" />{quiz.questions} Qs
-          </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <Target className="h-3 w-3" />{quiz.passingScore}%
-          </div>
+          {quiz.passing_score != null && quiz.passing_score > 0 && (
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <Target className="h-3 w-3" />
+              {quiz.passing_score}%
+            </div>
+          )}
+          {quiz.participant_count > 0 && (
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <Users className="h-3 w-3" />
+              {quiz.participant_count.toLocaleString()}
+            </div>
+          )}
           <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-auto group-hover:text-brand-blue transition-colors group-hover:translate-x-0.5" />
         </div>
+
+        {/* CTA button */}
+        <div className="mt-auto" data-cta>
+          {isLocked ? (
+            <Button
+              disabled
+              className="w-full bg-slate-100 text-slate-400 rounded-xl font-bold text-xs h-9 cursor-not-allowed"
+            >
+              Quiz Closed
+            </Button>
+          ) : attempt?.status === "submitted" ? (
+            <Link href={resultsHref}>
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs h-9 gap-1.5 transition-colors">
+                <BarChart2 className="h-3.5 w-3.5" />
+                View Results
+              </Button>
+            </Link>
+          ) : attempt?.status === "in_progress" ? (
+            <Link href={takeHref}>
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs h-9 gap-1.5 transition-colors">
+                <PlayCircle className="h-3.5 w-3.5" />
+                Continue Quiz
+              </Button>
+            </Link>
+          ) : (
+            <Link href={takeHref}>
+              <Button className="w-full bg-brand-navy hover:bg-brand-blue text-white rounded-xl font-bold text-xs h-9 gap-1.5 transition-all hover:shadow-md hover:shadow-brand-navy/20">
+                <PlayCircle className="h-3.5 w-3.5" />
+                Start Quiz
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
-    </Link>
+    </div>
   );
+}
+
+// ─── Skeleton card ────────────────────────────────────────────────────────────
+function QuizCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-white overflow-hidden">
+      <Skeleton className="h-28 w-full rounded-none" />
+      <div className="p-4 space-y-3">
+        <div className="flex gap-1.5">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-5/6" />
+        <div className="flex gap-3 pt-2 border-t border-border">
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-14" />
+          <Skeleton className="h-3 w-8" />
+        </div>
+        <Skeleton className="h-9 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Stat chip skeleton ───────────────────────────────────────────────────────
+function StatChipSkeleton() {
+  return <Skeleton className="h-7 w-28 rounded-full" />;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuizPage() {
+  const [quizzes,    setQuizzes]    = useState<Quiz[]>([]);
+  const [attempts,   setAttempts]   = useState<QuizAttempt[]>([]);
+  const [subjects,   setSubjects]   = useState<Subject[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Search / filter state
   const [search,     setSearch]     = useState("");
   const [filterDiff, setFilterDiff] = useState("all");
   const [filterSubj, setFilterSubj] = useState("all");
   const [filterStat, setFilterStat] = useState("all");
 
-  const subjects = [...new Set(quizzes.map(q => q.subject))];
+  // Stable supabase client — created once, never re-created on render
+  const supabase = createClient();
 
-  const filtered = quizzes.filter(q => {
-    const matchSearch = !search.trim() || q.title.toLowerCase().includes(search.toLowerCase()) || q.subject.toLowerCase().includes(search.toLowerCase());
-    const matchDiff   = filterDiff === "all" || q.difficulty === filterDiff;
-    const matchSubj   = filterSubj === "all" || q.subject === filterSubj;
-    const matchStat   = filterStat === "all" || q.status === filterStat;
-    return matchSearch && matchDiff && matchSubj && matchStat;
-  });
+  const handleRetry = useCallback(() => {
+    setFetchError(null);
+    setLoading(true);
+    setRetryCount((c) => c + 1);
+  }, []);
 
-  const available   = quizzes.filter(q => q.status === "available").length;
-  const inProgress  = quizzes.filter(q => q.status === "in-progress").length;
-  const completed   = quizzes.filter(q => q.status === "completed").length;
+  useEffect(() => {
+    let cancelled = false;
 
+    async function fetchData() {
+      setFetchError(null);
+
+      try {
+        // 1. Fetch all subjects (for filter dropdown + card display)
+        const { data: subjectsData, error: subjectsError } = await supabase
+          .from("subjects")
+          .select("id, name, slug, icon_name, color_theme")
+          .order("name", { ascending: true });
+
+        if (subjectsError) throw subjectsError;
+
+        // 2. Fetch all published quizzes with their subject joined
+        const { data: quizzesData, error: quizzesError } = await supabase
+          .from("quizzes")
+          .select(`
+            id,
+            name,
+            subtitle,
+            description,
+            difficulty,
+            duration_minutes,
+            passing_score,
+            participant_count,
+            status,
+            closed_at,
+            cover_gradient,
+            topics,
+            subject_id,
+            subjects (
+              id,
+              name,
+              slug,
+              icon_name,
+              color_theme
+            )
+          `)
+          .eq("status", "published")
+          .order("created_at", { ascending: false });
+
+        if (quizzesError) throw quizzesError;
+
+        // Normalise the `subjects` join (Supabase returns it as object or array)
+        const normalised: Quiz[] = (quizzesData ?? []).map((q) => ({
+          ...q,
+          subject: Array.isArray(q.subjects) ? q.subjects[0] : q.subjects,
+        })) as Quiz[];
+
+        // 3. Fetch current user's attempts — optional; skip if unauthenticated
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const mappedAttempts: QuizAttempt[] = [];
+
+        if (user && normalised.length > 0) {
+          const quizIds = normalised.map((q) => q.id);
+
+          const { data: studentData } = await supabase
+            .from("students")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (studentData) {
+            const { data: attemptsData } = await supabase
+              .from("quiz_attempts")
+              .select("quiz_id, status, score, max_score, percentage")
+              .eq("student_id", studentData.id)
+              .in("quiz_id", quizIds)
+              .order("started_at", { ascending: false });
+
+            // Keep only the most recent attempt per quiz
+            const seen = new Set<string>();
+            for (const a of attemptsData ?? []) {
+              if (!seen.has(a.quiz_id)) {
+                seen.add(a.quiz_id);
+                mappedAttempts.push(a as QuizAttempt);
+              }
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setSubjects((subjectsData ?? []) as Subject[]);
+          setQuizzes(normalised);
+          setAttempts(mappedAttempts);
+        }
+      } catch (err) {
+        console.error("QuizPage fetch error:", err);
+        if (!cancelled) {
+          setFetchError(
+            err instanceof Error
+              ? err.message
+              : "We couldn't load the quiz data. Please check your connection and try again."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, retryCount]);
+
+  // ── Derived / memoised values ─────────────────────────────────────────────
+  const attemptMap = useMemo(
+    () => new Map(attempts.map((a) => [a.quiz_id, a])),
+    [attempts]
+  );
+
+  const filtered = useMemo(() => {
+    return quizzes.filter((q) => {
+      const name = q.name?.toLowerCase() ?? "";
+      const subjectName = q.subject?.name?.toLowerCase() ?? "";
+      const matchSearch =
+        !search.trim() ||
+        name.includes(search.toLowerCase()) ||
+        subjectName.includes(search.toLowerCase());
+      const matchDiff =
+        filterDiff === "all" ||
+        (q.difficulty ?? "").toLowerCase() === filterDiff.toLowerCase();
+      const matchSubj =
+        filterSubj === "all" || q.subject_id === filterSubj;
+      const attempt = attemptMap.get(q.id);
+      const derivedStatus =
+        attempt?.status === "submitted"
+          ? "completed"
+          : attempt?.status === "in_progress"
+          ? "in-progress"
+          : q.closed_at && new Date(q.closed_at) < new Date()
+          ? "closed"
+          : "available";
+      const matchStat = filterStat === "all" || derivedStatus === filterStat;
+      return matchSearch && matchDiff && matchSubj && matchStat;
+    });
+  }, [quizzes, search, filterDiff, filterSubj, filterStat, attemptMap]);
+
+  const stats = useMemo(() => {
+    const total     = quizzes.length;
+    const available = quizzes.filter((q) => !attemptMap.has(q.id)).length;
+    const inProg    = attempts.filter((a) => a.status === "in_progress").length;
+    const completed = attempts.filter((a) => a.status === "submitted").length;
+    return { total, available, inProg, completed };
+  }, [quizzes, attempts, attemptMap]);
+
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setFilterDiff("all");
+    setFilterSubj("all");
+    setFilterStat("all");
+  }, []);
+
+  const hasActiveFilters =
+    filterDiff !== "all" || filterSubj !== "all" || filterStat !== "all" || search.trim() !== "";
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-full bg-surface p-6 space-y-6">
       {/* Header */}
@@ -291,88 +602,182 @@ export default function QuizPage() {
           <h1 className="text-2xl font-bold text-brand-dark tracking-tight">My Quizzes</h1>
           <p className="text-sm text-brand-subtitle mt-0.5">Select a quiz to begin your assessment.</p>
         </div>
-        <Link href="/quiz/view/quiz">
+        <Link href="/student/quiz/view">
           <Button className="bg-brand-navy hover:bg-brand-blue text-white font-semibold text-sm rounded-xl h-10 px-5 gap-2 transition-colors">
-            <Zap className="h-4 w-4" /> Start New Quiz
+            <Zap className="h-4 w-4" />
+            Browse Subjects
           </Button>
         </Link>
       </div>
 
+      {/* Error state */}
+      {fetchError && <ErrorState message={fetchError} onRetry={handleRetry} />}
+
       {/* Stat chips */}
-      <div className="flex items-center gap-3">
-        {[
-          { icon: <Layers className="h-3.5 w-3.5" />,   label: `${quizzes.length} Total`,      color: "bg-brand-light text-brand-navy" },
-          { icon: <PlayCircle className="h-3.5 w-3.5" />,label: `${available} Available`,       color: "bg-blue-50 text-blue-700"       },
-          { icon: <TrendingUp className="h-3.5 w-3.5" />,label: `${inProgress} In Progress`,    color: "bg-amber-50 text-amber-700"     },
-          { icon: <Target className="h-3.5 w-3.5" />,    label: `${completed} Completed`,       color: "bg-emerald-50 text-emerald-700" },
-        ].map(chip => (
-          <span key={chip.label} className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${chip.color}`}>
-            {chip.icon}{chip.label}
-          </span>
-        ))}
-      </div>
+      {!fetchError && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {loading ? (
+            <>
+              <StatChipSkeleton />
+              <StatChipSkeleton />
+              <StatChipSkeleton />
+              <StatChipSkeleton />
+            </>
+          ) : (
+            <>
+              {[
+                { icon: <Layers className="h-3.5 w-3.5" />,    label: `${stats.total} Total`,          color: "bg-brand-light text-brand-navy"  },
+                { icon: <PlayCircle className="h-3.5 w-3.5" />, label: `${stats.available} Available`,  color: "bg-blue-50 text-blue-700"         },
+                { icon: <TrendingUp className="h-3.5 w-3.5" />, label: `${stats.inProg} In Progress`,   color: "bg-amber-50 text-amber-700"       },
+                { icon: <Shield className="h-3.5 w-3.5" />,     label: `${stats.completed} Completed`,  color: "bg-emerald-50 text-emerald-700"   },
+              ].map((chip) => (
+                <span
+                  key={chip.label}
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${chip.color}`}
+                >
+                  {chip.icon}
+                  {chip.label}
+                </span>
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Search + filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-50 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search quizzes…"
-            className="h-9 pl-9 text-sm bg-white border-border focus-visible:ring-brand-blue rounded-xl" />
+      {!fetchError && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-50 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search quizzes…"
+              className="h-9 pl-9 text-sm bg-white border-border focus-visible:ring-brand-blue rounded-xl"
+            />
+          </div>
+
+          {/* Subject filter */}
+          <Select value={filterSubj} onValueChange={setFilterSubj}>
+            <SelectTrigger className="h-9 text-sm border-border rounded-xl w-36 focus:ring-brand-blue">
+              <Filter className="h-3.5 w-3.5 text-slate-400 mr-1.5 shrink-0" />
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Difficulty filter */}
+          <Select value={filterDiff} onValueChange={setFilterDiff}>
+            <SelectTrigger className="h-9 text-sm border-border rounded-xl w-40 focus:ring-brand-blue">
+              <SelectValue placeholder="Difficulty" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Levels</SelectItem>
+              <SelectItem value="beginner">Beginner</SelectItem>
+              <SelectItem value="intermediate">Intermediate</SelectItem>
+              <SelectItem value="advanced">Advanced</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Status filter */}
+          <Select value={filterStat} onValueChange={setFilterStat}>
+            <SelectTrigger className="h-9 text-sm border-border rounded-xl w-40 focus:ring-brand-blue">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-xs font-semibold text-brand-blue hover:opacity-70 transition-opacity"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
-        <Select value={filterSubj} onValueChange={setFilterSubj}>
-          <SelectTrigger className="h-9 text-sm border-border rounded-xl w-36 focus:ring-brand-blue">
-            <Filter className="h-3.5 w-3.5 text-slate-400 mr-1.5 shrink-0" /><SelectValue placeholder="Subject" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="all">All Subjects</SelectItem>
-            {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterDiff} onValueChange={setFilterDiff}>
-          <SelectTrigger className="h-9 text-sm border-border rounded-xl w-40 focus:ring-brand-blue">
-            <SelectValue placeholder="Difficulty" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="all">All Levels</SelectItem>
-            <SelectItem value="Beginner">Beginner</SelectItem>
-            <SelectItem value="Intermediate">Intermediate</SelectItem>
-            <SelectItem value="Advanced">Advanced</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterStat} onValueChange={setFilterStat}>
-          <SelectTrigger className="h-9 text-sm border-border rounded-xl w-40 focus:ring-brand-blue">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="available">Available</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="locked">Locked</SelectItem>
-          </SelectContent>
-        </Select>
-        {(filterDiff !== "all" || filterSubj !== "all" || filterStat !== "all" || search) && (
-          <button onClick={() => { setSearch(""); setFilterDiff("all"); setFilterSubj("all"); setFilterStat("all"); }}
-            className="text-xs font-semibold text-brand-blue hover:opacity-70 transition-opacity">
-            Clear filters
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="h-14 w-14 rounded-2xl bg-brand-light flex items-center justify-center">
-            <Search className="h-7 w-7 text-brand-blue" />
-          </div>
-          <p className="text-sm font-semibold text-brand-dark">No quizzes found</p>
-          <p className="text-xs text-brand-subtitle">Try adjusting your search or filters</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(quiz => <QuizCard key={quiz.id} quiz={quiz} />)}
-        </div>
+      {!fetchError && (
+        <>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <QuizCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div className="h-14 w-14 rounded-2xl bg-brand-light flex items-center justify-center">
+                {hasActiveFilters ? (
+                  <Search className="h-7 w-7 text-brand-blue" />
+                ) : (
+                  <BookOpen className="h-7 w-7 text-brand-blue" />
+                )}
+              </div>
+              <p className="text-sm font-semibold text-brand-dark">
+                {hasActiveFilters ? "No quizzes match your filters" : "No quizzes available yet"}
+              </p>
+              <p className="text-xs text-brand-subtitle">
+                {hasActiveFilters
+                  ? "Try adjusting your search or filters"
+                  : "Check back soon for new quizzes"}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs font-semibold text-brand-blue hover:opacity-70 transition-opacity mt-1"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Result count badge */}
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-brand-light text-brand-navy border-0 text-[11px] font-semibold">
+                    {filtered.length} {filtered.length === 1 ? "result" : "results"}
+                  </Badge>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((quiz) => (
+                  <QuizCard
+                    key={quiz.id}
+                    quiz={quiz}
+                    attempt={attemptMap.get(quiz.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Inline fetch-error alert (non-fatal, after data partially loaded) */}
+          {!loading && quizzes.length === 0 && !fetchError && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+              <p className="text-sm text-amber-700">
+                No published quizzes found. Please check back later.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
