@@ -88,30 +88,6 @@ interface StudentData {
   top_subject: string | null;
 }
 
-interface QuizAttempt {
-  id: string;
-  quiz_id: string;
-  score: number;
-  max_score: number;
-  percentage: number | null;
-  status: string;
-  submitted_at: string | null;
-  quizzes: {
-    name: string;
-    subtitle: string | null;
-    difficulty: string | null;
-    duration_minutes: number | null;
-    passing_score: number | null;
-    question_count: number;
-    participant_count: number;
-    cover_gradient: string | null;
-    topics: string[] | null;
-    join_code: string | null;
-    closed_at: string | null;
-    status: string;
-  };
-}
-
 interface SubjectScore {
   id: string;
   score: number;

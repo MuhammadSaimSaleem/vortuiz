@@ -34,7 +34,6 @@ import {
   BarChart2,
   RefreshCw,
   ServerCrash,
-  AlertCircle,
   Users,
   Shield,
 } from "lucide-react";
