@@ -16,6 +16,7 @@ import Navbar from "@/components/ui/NavBar";
 import Footer from "@/components/ui/Footer";
 import { connectGoogle, createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // ── Validation helpers ──────────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ type FormErrors = Partial<Record<string, string>>;
 export default function AuthPage() {
   const [role, setRole] = useState<"teacher" | "student" | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('next') || '/'
 
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [step, setStep] = useState<"1" | "2">("1");
@@ -232,21 +237,10 @@ export default function AuthPage() {
         }
         return;
       }
+      
+      router.push(redirectTo);
+      router.refresh();
 
-      const { data: { user }, error: fetchUserError } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user?.id)
-      .single();
-
-      const role = profile?.role;
-
-      if ( fetchUserError ) {
-        setServerError("Error fetching user");
-      }
-
-      window.location.href = `/${role}s/dashboard`;
     } catch {
       setServerError("Something went wrong. Please try again.");
     } finally {
@@ -331,9 +325,10 @@ export default function AuthPage() {
         return;
       }
 
-      if(user.app_metadata.provider === 'google')
-        window.location.href = `${role}s/dashboard`
-      else {
+      if (user.app_metadata.provider === 'google') {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
         setSuccessMessage("Account created! Please log in.");
         setStep('1');
         setTab("login");

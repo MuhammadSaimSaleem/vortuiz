@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  // 1. Grab the code from the URL (the one Google gave the user)
+  // 1. Grab the code and the explicit origin from the request URL
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     if (!exchangeError) {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Fetch the profile, but specifically check the 'role'
+      // Fetch the profile to check the 'role'
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -32,17 +32,22 @@ export async function GET(request: Request) {
         provider: user?.app_metadata.provider,
       };
     
-    
+      // FIX: Use the 'origin' string evaluated from the request object instead of window.location.origin
       return new NextResponse(
         `
         <html>
           <body>
             <script>
-              window.opener.postMessage(
-                { type: 'auth-success', data: ${JSON.stringify(userData)} }, 
-                window.location.origin
-              );
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage(
+                  { type: 'auth-success', data: ${JSON.stringify(userData)} }, 
+                  "${origin}"
+                );
+                window.close();
+              } else {
+                // Fallback if the popup was separated from the parent window
+                window.location.href = "${origin}/students/dashboard";
+              }
             </script>
           </body>
         </html>
@@ -51,6 +56,7 @@ export async function GET(request: Request) {
       );
     }
   }
+  
   // If something goes wrong, send them to an error page
   return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }

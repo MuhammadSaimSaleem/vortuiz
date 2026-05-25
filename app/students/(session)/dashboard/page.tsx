@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,9 +32,43 @@ interface AssignedQuiz {
   tagVariant: "due" | "open";
   title: string;
   subtitle: string;
+  // full quizzes schema fields
+  difficulty: string | null;
+  durationMinutes: number | null;
+  passingScore: number | null;
+  questionCount: number;
+  coverGradient: string | null;
+  topics: string[] | null;
+  joinCode: string | null;
   meta?: string;
   metaIsTime?: boolean;
   participants?: number;
+  // from quiz_affiliations
+  affiliationStatus: string;
+  assignedAt: string;
+}
+
+// Row returned when joining quiz_affiliations → quizzes
+interface QuizAffiliationRow {
+  student_id: string;
+  quiz_id: string;
+  assigned_at: string;
+  status: string;
+  quizzes: {
+    id: string;
+    name: string;
+    subtitle: string | null;
+    difficulty: string | null;
+    duration_minutes: number | null;
+    passing_score: number | null;
+    question_count: number;
+    participant_count: number;
+    cover_gradient: string | null;
+    topics: string[] | null;
+    join_code: string | null;
+    closed_at: string | null;
+    status: string;
+  };
 }
 
 interface ScoreItem {
@@ -43,14 +77,6 @@ interface ScoreItem {
   score: string;
   icon: React.ReactNode;
   iconBg: string;
-}
-
-interface StudentProfile {
-  id: string;
-  full_name: string | null;
-  email: string;
-  avatar_url: string | null;
-  avatar_initials: string | null;
 }
 
 interface StudentData {
@@ -73,7 +99,14 @@ interface QuizAttempt {
   quizzes: {
     name: string;
     subtitle: string | null;
+    difficulty: string | null;
+    duration_minutes: number | null;
+    passing_score: number | null;
+    question_count: number;
     participant_count: number;
+    cover_gradient: string | null;
+    topics: string[] | null;
+    join_code: string | null;
     closed_at: string | null;
     status: string;
   };
@@ -110,7 +143,7 @@ function getScoreIcon(pct: number): { icon: React.ReactNode; iconBg: string } {
 }
 
 // ─── Quiz tag helper ───────────────────────────────────────────────────────────
-function deriveQuizTag(quiz: QuizAttempt["quizzes"]): {
+function deriveQuizTag(quiz: { closed_at: string | null }): {
   tag: string;
   tagVariant: "due" | "open";
 } {
@@ -296,44 +329,111 @@ function AssignedQuizzes({ quizzes, loading }: AssignedQuizzesProps) {
           </div>
         ) : (
           quizzes.map((quiz) => (
-            <div key={quiz.id} className="rounded-2xl border border-border bg-white p-5 flex flex-col gap-4">
-              <div className="flex items-start justify-between">
-                <Badge
-                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-0 ${
-                    quiz.tagVariant === "due"
-                      ? "bg-orange-100 text-orange-600"
-                      : "bg-blue-100 text-brand-blue"
-                  }`}
-                >
-                  {quiz.tag}
-                </Badge>
+            <div
+              key={quiz.id}
+              className="rounded-2xl border border-border overflow-hidden flex flex-col"
+              style={{
+                background: quiz.coverGradient
+                  ? `linear-gradient(to left, #ffffff 0%, #ffffff 1%, ${quiz.coverGradient.replace(/^linear-gradient\([^,]+,\s*/, "").replace(/\)$/, "")} 100%)`
+                  : "linear-gradient(to left, #ffffff 0%, #f1f5f9 100%)",
+              }}
+>
+              {/* Card header */}
+              <div className="flex items-start justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-0 ${
+                      quiz.tagVariant === "due"
+                        ? "bg-orange-100 text-orange-600"
+                        : "bg-blue-100 text-brand-blue"
+                    }`}
+                  >
+                    {quiz.tag}
+                  </Badge>
+                  {quiz.difficulty && (
+                    <Badge className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 bg-slate-100 text-slate-500 capitalize">
+                      {quiz.difficulty}
+                    </Badge>
+                  )}
+                  {/* Affiliation status badge */}
+                  <Badge
+                    className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 capitalize ${
+                      quiz.affiliationStatus === "assigned"
+                        ? "bg-violet-100 text-violet-600"
+                        : quiz.affiliationStatus === "in_progress"
+                        ? "bg-amber-100 text-amber-600"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {quiz.affiliationStatus.replace("_", " ")}
+                  </Badge>
+                </div>
                 <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1 text-slate-300">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </div>
 
-              <div>
+              {/* Title + subtitle */}
+              <div className="px-5 pb-3">
                 <p className="font-bold text-brand-navy text-base leading-tight mb-1">{quiz.title}</p>
-                <p className="text-xs text-slate-400">{quiz.subtitle}</p>
+                <p className="text-xs text-black">{quiz.subtitle}</p>
               </div>
 
-              <div className="flex items-center justify-between mt-auto">
-                {quiz.participants != null ? (
-                  <div className="flex items-center gap-1.5">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="bg-brand-navy text-white text-[9px]">U</AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-slate-400 font-medium">+{quiz.participants}</span>
-                  </div>
-                ) : quiz.meta ? (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <Clock className="h-3.5 w-3.5" />
-                    {quiz.meta}
-                  </div>
-                ) : (
-                  <span />
-                )}
-                <Link href={`/quiz/${quiz.id}/take`}>
+              {/* Topics */}
+              {quiz.topics && quiz.topics.length > 0 && (
+                <div className="px-5 pb-3 flex flex-wrap gap-1.5">
+                  {quiz.topics.slice(0, 3).map((topic) => (
+                    <span
+                      key={topic}
+                      className="text-[10px] font-semibold bg-slate-300 text-brand-blue px-2 py-0.5 rounded-full"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                  {quiz.topics.length > 3 && (
+                    <span className="text-[10px] font-semibold text-black px-1">
+                      +{quiz.topics.length - 3} more
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Meta row */}
+              <div className="flex items-center justify-between px-5 pb-5 mt-auto gap-3">
+                <div className="flex items-center gap-3 text-xs text-black flex-wrap">
+                  {quiz.durationMinutes != null && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {quiz.durationMinutes} min
+                    </span>
+                  )}
+                  {quiz.questionCount > 0 && (
+                    <span className="flex items-center gap-1">
+                      <HelpCircle className="h-3.5 w-3.5" />
+                      {quiz.questionCount} Qs
+                    </span>
+                  )}
+                  {quiz.passingScore != null && (
+                    <span className="flex items-center gap-1">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Pass: {quiz.passingScore}%
+                    </span>
+                  )}
+                  {quiz.participants != null && (
+                    <span className="flex items-center gap-1.5">
+                      <Avatar className="h-4 w-4">
+                        <AvatarFallback className="bg-brand-navy text-white text-[8px]">U</AvatarFallback>
+                      </Avatar>
+                      +{quiz.participants}
+                    </span>
+                  )}
+                  {/* Assigned date from quiz_affiliations.assigned_at */}
+                  <span className="flex items-center gap-1" title={`Assigned ${new Date(quiz.assignedAt).toLocaleDateString()}`}>
+                    <Scroll className="h-3.5 w-3.5" />
+                    {new Date(quiz.assignedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+                <Link href={`/quiz/${quiz.id}/take`} className="shrink-0">
                   <Button className="bg-brand-navy hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
                     Take Now
                   </Button>
@@ -549,7 +649,6 @@ function Footer() {
 export default function StudentDashboard() {
   const supabase = createClient();
 
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [studentData, setStudentData] = useState<StudentData | null>(null);
   const [assignedQuizzes, setAssignedQuizzes] = useState<AssignedQuiz[]>([]);
   const [scoreItems, setScoreItems] = useState<ScoreItem[]>([]);
@@ -577,26 +676,15 @@ export default function StudentDashboard() {
         if (!cancelled) setAuthUserId(user.id);
 
         // 2. Profile + student record in parallel
-        const [profResult, studentResult] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id, full_name, email, avatar_url, avatar_initials")
-            .eq("id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("students")
-            .select("id, user_id, top_percentile, overall_percentile, accuracy_rate, top_subject")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-        ]);
+        const { data: studentResult, error: studentError} = await supabase
+          .from("students")
+          .select("id, user_id, top_percentile, overall_percentile, accuracy_rate, top_subject")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
         if (cancelled) return;
 
-        if (profResult.error) console.error("Profile fetch error:", profResult.error.message);
-        if (studentResult.error) console.error("Student fetch error:", studentResult.error.message);
-
-        const prof = profResult.data;
-        const student = studentResult.data;
+        if (studentError) console.error("Student fetch error:", studentError);
 
         // 3. Subjects + enrollments — fetched for ALL users, no student record needed
         const [allSubjectsResult, enrolledResult] = await Promise.all([
@@ -626,34 +714,45 @@ export default function StudentDashboard() {
           isEnrolled: enrolledIds.has(s.id),
         }));
 
-        // 4. Quiz attempts + subject scores — only if a student record exists
+        // 4. Quiz affiliations (assigned quizzes) + subject scores — only if a student record exists
         let mappedQuizzes: AssignedQuiz[] = [];
         let mappedScores: ScoreItem[] = [];
         let completed = 0;
         let totalAttempts = 0;
 
-        if (student) {
-          const [attemptsResult, scoresResult] = await Promise.all([
+        if (studentResult) {
+          const [affiliationsResult, attemptsCountResult, scoresResult] = await Promise.all([
+            // Primary source for assigned quizzes: quiz_affiliations joined to quizzes
             supabase
-              .from("quiz_attempts")
+              .from("quiz_affiliations")
               .select(`
-                id,
+                student_id,
                 quiz_id,
-                score,
-                max_score,
-                percentage,
+                assigned_at,
                 status,
-                submitted_at,
                 quizzes (
+                  id,
                   name,
                   subtitle,
+                  difficulty,
+                  duration_minutes,
+                  passing_score,
+                  question_count,
                   participant_count,
+                  cover_gradient,
+                  topics,
+                  join_code,
                   closed_at,
                   status
                 )
               `)
-              .eq("student_id", student.id)
-              .order("started_at", { ascending: false }),
+              .eq("student_id", studentResult.id)
+              .order("assigned_at", { ascending: false }),
+            // Keep attempt counts for the Overall Progress widget
+            supabase
+              .from("quiz_attempts")
+              .select("id, status")
+              .eq("student_id", studentResult.id),
             supabase
               .from("student_subject_scores")
               .select(`
@@ -665,32 +764,54 @@ export default function StudentDashboard() {
                   code
                 )
               `)
-              .eq("student_id", student.id)
+              .eq("student_id", studentResult.id)
               .order("recorded_at", { ascending: false })
               .limit(10),
           ]);
 
           if (cancelled) return;
-
-          if (attemptsResult.error) console.error("Quizzes fetch error:", attemptsResult.error.message);
+          if (affiliationsResult.error) console.error("Affiliations fetch error:", affiliationsResult.error.message);
+          if (attemptsCountResult.error) console.error("Attempts count error:", attemptsCountResult.error.message);
           if (scoresResult.error) console.error("Scores fetch error:", scoresResult.error.message);
 
-          const typedAttempts = ((attemptsResult.data ?? []) as unknown as QuizAttempt[]);
-          completed = typedAttempts.filter((a) => a.status === "submitted").length;
-          totalAttempts = typedAttempts.length;
-          const open = typedAttempts
-            .filter((a) => a.status === "in_progress" && a.quizzes?.status === "published")
-            .slice(0, 2);
+          // Overall progress counts come from actual quiz_attempts
+          const attemptRows = attemptsCountResult.data ?? [];
+          completed = attemptRows.filter((a) => a.status === "submitted").length;
+          totalAttempts = attemptRows.length;
 
-          mappedQuizzes = open.map((a) => {
+          // Assigned quizzes come from quiz_affiliations
+          // Show only quizzes that are: affiliation status != "completed", quiz published & not closed
+          const typedAffiliations = (affiliationsResult.data ?? []) as unknown as QuizAffiliationRow[];
+          const now = new Date();
+          const activeAffiliations = typedAffiliations.filter((a) => {
+            const q = a.quizzes;
+            const notCompleted = a.status !== "completed";
+            const quizPublished = q.status === "published";
+            const notClosed = !q.closed_at || new Date(q.closed_at) > now;
+            return notCompleted && quizPublished && notClosed;
+          }).slice(0, 4); // show up to 4 assigned quizzes on dashboard
+
+          mappedQuizzes = activeAffiliations.map((a) => {
             const { tag, tagVariant } = deriveQuizTag(a.quizzes);
+            const durationMinutes = a.quizzes.duration_minutes;
             return {
-              id: a.quiz_id,
+              id: a.quizzes.id,
               tag,
               tagVariant,
               title: a.quizzes.name,
               subtitle: a.quizzes.subtitle ?? "",
+              difficulty: a.quizzes.difficulty ?? null,
+              durationMinutes: durationMinutes ?? null,
+              passingScore: a.quizzes.passing_score ?? null,
+              questionCount: a.quizzes.question_count,
+              coverGradient: a.quizzes.cover_gradient ?? null,
+              topics: a.quizzes.topics ?? null,
+              joinCode: a.quizzes.join_code ?? null,
               participants: a.quizzes.participant_count > 0 ? a.quizzes.participant_count : undefined,
+              meta: durationMinutes ? `${durationMinutes} min` : undefined,
+              metaIsTime: durationMinutes != null ? true : undefined,
+              affiliationStatus: a.status,
+              assignedAt: a.assigned_at,
             };
           });
 
@@ -717,8 +838,7 @@ export default function StudentDashboard() {
 
         // 5. Single batched state update — no cascading renders
         if (!cancelled) {
-          if (prof) setProfile(prof);
-          if (student) setStudentData(student);
+          if (studentResult) setStudentData(studentResult);
           setCompletedCount(completed);
           setTotalCount(totalAttempts);
           setAssignedQuizzes(mappedQuizzes);

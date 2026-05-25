@@ -62,6 +62,7 @@ interface Profile {
   institution_id: string | null;
   role: string | null;
   avatar_initials: string | null;
+  avatar_url: string | null;
   student_id: string | null;
   two_factor_enabled: boolean | null;
   two_factor_method: "sms" | "email" | "totp" | null;
@@ -315,7 +316,6 @@ export default function Profile() {
   const supabase = createClient();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [avatarURL, setAvatarUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -400,13 +400,6 @@ export default function Profile() {
             .eq("id", profileData.institution_id)
             .single();
           institutionName = institutionData?.name;
-
-          const { data: avatarData } = await supabase
-            .storage
-            .from('avatars')
-            .getPublicUrl(`${user.id}/avatar.png`);
-
-          setAvatarUrl(avatarData?.publicUrl ?? "");
         }
 
         const combinedProfile: Profile = {
@@ -707,13 +700,14 @@ export default function Profile() {
         {/* ── Profile header card ── */}
         <div className="rounded-2xl border border-border bg-white px-7 py-6 flex items-center gap-6">
           <div className="relative shrink-0">
-            <div className="h-20 w-20 rounded-2xl overflow-hidden bg-slate-200">
+            <div className="h-20 w-20 rounded-2xl overflow-hidden bg-slate-200 border-2 border-slate-400 shadow-md">
               <div className="h-full w-full flex items-center justify-center">
-                {avatarURL ? (
+                {profile?.avatar_url ? (
                     <Image
-                      src={avatarURL}
+                      src={profile?.avatar_url || ""}
                       alt="Profile Image"
-                      fill
+                      width={100}
+                      height={100}
                     />
                   ) : (
                     <span className="text-2xl font-bold text-white">

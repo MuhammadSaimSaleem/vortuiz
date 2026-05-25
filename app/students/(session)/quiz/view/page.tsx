@@ -767,16 +767,6 @@ export default function QuizPage() {
               </div>
             </>
           )}
-
-          {/* Inline fetch-error alert (non-fatal, after data partially loaded) */}
-          {!loading && quizzes.length === 0 && !fetchError && (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
-              <p className="text-sm text-amber-700">
-                No published quizzes found. Please check back later.
-              </p>
-            </div>
-          )}
         </>
       )}
     </div>
