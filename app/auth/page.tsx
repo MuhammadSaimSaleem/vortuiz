@@ -1,3 +1,5 @@
+'use client'
+
 import { Suspense } from "react";
 import AuthForm from "./AuthForm";
 import Navbar from "@/components/ui/NavBar";
