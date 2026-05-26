@@ -1,21 +1,8 @@
 "use client";
 
-/**
- * Quiz Studio – page.tsx
- * Supabase integration via `public.questions` schema.
- *
- * Env vars required (add to .env.local):
- *   NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
- *   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
- *
- * Install deps:
- *   npm install @supabase/supabase-js
- *   npx shadcn@latest add badge button radio-group label switch separator tooltip skeleton alert
- */
-
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -35,14 +22,10 @@ import {
   LayoutGrid,
   AlertCircle,
   RefreshCw,
+  CheckCircle2,
+  Timer,
 } from "lucide-react";
-
-// ─── Supabase client (singleton) ─────────────────────────────────────────────
-
-const supabase: SupabaseClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,22 +37,12 @@ interface Question {
   body: string;
   type: string;
   order_index: number;
-  difficulty: number | null;
   points: number;
   title: string | null;
-  hint: string | null;
-  /** options stored as JSON in `body` when type === 'mcq', or fetched from a
-   *  separate options table. For this demo we parse options from body if it
-   *  contains a JSON array under "options" key; otherwise show open text. */
-  options?: MCQOption[];
+  options?: string[];
 }
 
-interface MCQOption {
-  id: string;
-  text: string;
-}
-
-type AnswerStatus = "answered" | "current" | "unanswered" | "locked";
+type AnswerStatus = "answered" | "current" | "unanswered";
 
 interface NavQuestion {
   id: string;
@@ -77,36 +50,6 @@ interface NavQuestion {
   status: AnswerStatus;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function parseMCQOptions(body: string): { text: string; options: MCQOption[] } {
-  try {
-    const parsed = JSON.parse(body);
-    if (parsed && typeof parsed === "object" && Array.isArray(parsed.options)) {
-      return {
-        text: parsed.text ?? body,
-        options: parsed.options as MCQOption[],
-      };
-    }
-  } catch {
-    // not JSON — treat as plain text question body
-  }
-  return { text: body, options: [] };
-}
-
-function difficultyLabel(d: number | null): string {
-  if (d === null) return "";
-  if (d <= 2) return "Easy";
-  if (d <= 4) return "Medium";
-  return "Hard";
-}
-
-function difficultyColor(d: number | null): string {
-  if (d === null) return "";
-  if (d <= 2) return "text-emerald-600 bg-emerald-50 border-emerald-200";
-  if (d <= 4) return "text-amber-600 bg-amber-50 border-amber-200";
-  return "text-red-600 bg-red-50 border-red-200";
-}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -124,7 +67,6 @@ function NavButton({
     answered: "bg-[#0f2557] text-white hover:bg-[#1a3a7a] shadow-sm cursor-pointer",
     current: "bg-white text-[#0f2557] border-2 border-[#0f2557] shadow-md font-bold cursor-default",
     unanswered: "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 cursor-pointer",
-    locked: "bg-slate-50 text-slate-300 border border-slate-100 cursor-not-allowed",
   };
 
   return (
@@ -133,7 +75,7 @@ function NavButton({
         <TooltipTrigger asChild>
           <button
             className={`${base} ${styles[item.status]}`}
-            onClick={item.status !== "locked" ? onClick : undefined}
+            onClick={onClick}
           >
             {item.order_index}
           </button>
@@ -206,53 +148,158 @@ function useTimer(initialSeconds = 2532) {
   return `${h} : ${m} : ${s}`;
 }
 
+// ─── useStudentId — resolves auth user → students.id ─────────────────────────
+
+function useStudentId() {
+  const supabase = createClient();
+  const [studentId, setStudentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("students")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (!cancelled && data) setStudentId(data.id as string);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [supabase]);
+
+  return studentId;
+}
+
 // ─── useQuiz hook — all Supabase logic ───────────────────────────────────────
 
 function useQuiz(quizId: string) {
+  const supabase = createClient();
+  const studentId = useStudentId();
+  const router = useRouter();
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const saved = localStorage.getItem(`quiz_answers_${quizId}`);
-      return saved ? (JSON.parse(saved) as Record<string, string>) : {};
-    } catch {
-      return {};
-    }
-  });
+  // question_id → selected_option text value
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // question_id → text_response value (short_answer / coding_response)
+  const [textResponses, setTextResponses] = useState<Record<string, string>>({});
+  // question_id → flagged boolean (mirrors DB, kept in sync on every upsert)
+  const [flagged, setFlagged] = useState<Record<string, boolean>>({});
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // true once the affiliation status check has completed (and not redirected)
+  const [accessChecked, setAccessChecked] = useState(false);
 
-  // ── Fetch all questions for this quiz ──────────────────────────────────────
-  // Incrementing refetchCount triggers the effect without calling setState in the body.
   const [refetchCount, setRefetchCount] = useState(0);
   const refetch = useCallback(() => setRefetchCount((n) => n + 1), []);
 
+  // ── Check affiliation status and redirect if inaccessible ─────────────────
   useEffect(() => {
+    if (!studentId || !quizId) return;
+    let cancelled = false;
+
+    async function checkAccess() {
+      const { data } = await supabase
+        .from("quiz_affiliations")
+        .select("status")
+        .eq("student_id", studentId)
+        .eq("quiz_id", quizId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      const affStatus = data?.status?.toLowerCase() ?? null;
+
+      if (affStatus === "completed") {
+        router.replace(`/students/quiz/${quizId}/result`);
+      } else if (affStatus !== "available" && affStatus !== "in_progress") {
+        router.replace("/students/quiz/view");
+      } else {
+        // Access is valid — allow data fetching and UI to proceed
+        if (!cancelled) setAccessChecked(true);
+      }
+    }
+
+    checkAccess();
+    return () => { cancelled = true; };
+  }, [studentId, quizId, supabase, router]);
+
+  // ── Fetch questions + existing responses in one pass ───────────────────────
+  useEffect(() => {
+    if (!studentId || !accessChecked) return; // wait until student is resolved and access is verified
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: fetchError } = await supabase
+        // 1. Questions with options
+        const { data: qData, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id, quiz_id, subject_id, body, type, order_index, difficulty, points, title, hint"
+            "id, quiz_id, subject_id, body, type, title, options, order_index, points"
           )
           .eq("quiz_id", quizId)
           .order("order_index", { ascending: true });
 
-        if (fetchError) throw fetchError;
+        if (qErr) throw qErr;
         if (cancelled) return;
 
-        const enriched: Question[] = (data ?? []).map((q) => {
-          const { text, options } = parseMCQOptions(q.body);
-          return { ...q, body: text, options };
-        });
+        const enriched: Question[] = (qData ?? []).map((q) => ({
+          ...q,
+          options: (q.options ?? []).flatMap((opt: unknown) => {
+            if (typeof opt === "string") return [opt];
+            if (opt && typeof opt === "object") {
+              const o = opt as Record<string, unknown>;
+              if (Array.isArray(o.content)) return (o.content as unknown[]).map(String);
+              if (o.content != null) return [String(o.content)];
+            }
+            return [];
+          }),
+        }));
+
+        // 2. Existing responses for this student across these questions
+        const questionIds = enriched.map((q) => q.id);
+        const { data: rData } = await supabase
+          .from("question_responses")
+          .select("question_id, selected_option, text_response, flagged_for_review")
+          .eq("student_id", studentId)
+          .in("question_id", questionIds);
+
+        if (cancelled) return;
+
+        const hydratedAnswers: Record<string, string> = {};
+        const hydratedTextResponses: Record<string, string> = {};
+        const hydratedFlagged: Record<string, boolean> = {};
+
+        const qMap = new Map(enriched.map((q) => [q.id, q]));
+
+        for (const r of rData ?? []) {
+          const q = qMap.get(r.question_id);
+          const isTextType =
+            q?.type === "short_answer" || q?.type === "coding_response";
+
+          if (r.text_response) {
+            hydratedTextResponses[r.question_id] = r.text_response;
+            hydratedAnswers[r.question_id] = r.text_response; // marks nav as answered
+          } else if (r.selected_option && q && !isTextType) {
+            // Find the index of the stored option text
+            const idx = (q.options ?? []).indexOf(r.selected_option);
+            if (idx !== -1) hydratedAnswers[r.question_id] = String(idx);
+          }
+
+          hydratedFlagged[r.question_id] = r.flagged_for_review ?? false;
+        }
 
         setQuestions(enriched);
+        setAnswers(hydratedAnswers);
+        setTextResponses(hydratedTextResponses);
+        setFlagged(hydratedFlagged);
       } catch (err: unknown) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load questions.");
@@ -264,7 +311,7 @@ function useQuiz(quizId: string) {
 
     load();
     return () => { cancelled = true; };
-  }, [quizId, refetchCount]);
+  }, [quizId, studentId, accessChecked, refetchCount, supabase]);
 
   // ── Derived nav items ──────────────────────────────────────────────────────
   const navQuestions: NavQuestion[] = questions.map((q, idx) => ({
@@ -275,48 +322,125 @@ function useQuiz(quizId: string) {
         ? "current"
         : answers[q.id]
         ? "answered"
-        : idx <= currentIndex
-        ? "unanswered"
-        : "locked",
+        : "unanswered",
   }));
 
   const current: Question | null = questions[currentIndex] ?? null;
   const selectedAnswer: string = current ? (answers[current.id] ?? "") : "";
 
-  // ── Save answer (upsert to quiz_responses if you have that table,
-  //    or just keep in memory — here we do both) ────────────────────────────
+  // ── Save selected answer ───────────────────────────────────────────────────
   const saveAnswer = useCallback(
-    async (optionId: string) => {
+    (valueKey: string) => {
       if (!current) return;
-      // Optimistic local update
-      setAnswers((prev) => ({ ...prev, [current.id]: optionId }));
+      setAnswers((prev) => ({ ...prev, [current.id]: valueKey }));
+    },
+    [current]
+  );
 
+  // ── Save text response (short_answer / coding_response) ───────────────────
+  const saveTextResponse = useCallback(
+    (value: string) => {
+      if (!current) return;
+      setTextResponses((prev) => ({ ...prev, [current.id]: value }));
+      setAnswers((prev) => ({ ...prev, [current.id]: value })); // keeps nav "answered"
+    },
+    [current]
+  );
+
+  // ── Toggle flagged_for_review ──────────────────────────────────────────────
+  const toggleFlag = useCallback(
+    (questionId: string) => {
+      setFlagged((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+    },
+    []
+  );
+
+  const isLastQuestion = currentIndex === questions.length - 1 && questions.length > 0;
+  const allAnswered = questions.length > 0 && Object.keys(answers).length === questions.length;
+
+  // ── Resolve a question into its DB response payload ─────────────────────────
+  const buildResponseRow = useCallback(
+    (q: Question) => {
+      const isTextType = q.type === "short_answer" || q.type === "coding_response";
+      let selectedOption: string | null = null;
+      if (!isTextType && answers[q.id]) {
+        const idx = Number(answers[q.id]);
+        selectedOption = q.options?.[idx] ?? null;
+      }
+      return {
+        student_id: studentId as string,
+        question_id: q.id,
+        selected_option: selectedOption,
+        text_response: isTextType ? (textResponses[q.id]?.trim() || null) : null,
+        flagged_for_review: flagged[q.id] ?? false,
+      };
+    },
+    [studentId, answers, textResponses, flagged]
+  );
+
+  
+
+  // ── Persist the current question's response to DB ────────────────────────
+  const saveCurrentResponse = useCallback(
+    async (): Promise<void> => {
+      if (!current || !studentId) return;
+      const row = buildResponseRow(current);
+      if (!row.selected_option && !row.text_response) return;
       setSaving(true);
       try {
-        /**
-         * If you have a `quiz_responses` or `question_answers` table, upsert here.
-         * Example (adjust columns to match your schema):
-         *
-         * await supabase.from("quiz_responses").upsert({
-         *   question_id: current.id,
-         *   quiz_id: quizId,
-         *   selected_option: optionId,
-         *   updated_at: new Date().toISOString(),
-         * }, { onConflict: "question_id,quiz_id" });
-         *
-         * For now we just persist to localStorage as a fallback.
-         */
-        localStorage.setItem(
-          `quiz_answers_${quizId}`,
-          JSON.stringify({ ...answers, [current.id]: optionId })
-        );
-      } catch {
-        // non-critical
+        const { error: err } = await supabase
+          .from("question_responses")
+          .upsert(row, { onConflict: "student_id,question_id" });
+        if (err) console.error("[saveCurrentResponse]", err);
       } finally {
         setSaving(false);
       }
     },
-    [current, quizId, answers]
+    [current, studentId, buildResponseRow, supabase]
+  );
+
+  const updateAffiliationStatus = useCallback(
+    async (status: "in_progress" | "completed"): Promise<void> => {
+      if (!studentId) return;
+      const { error: err } = await supabase
+        .from("quiz_affiliations")
+        .update({ status })
+        .eq("student_id", studentId)
+        .eq("quiz_id", quizId);
+      if (err) console.error("[updateAffiliationStatus]", err);
+    },
+    [studentId, quizId, supabase]
+  );
+
+  // ── Submit quiz — persist all answered responses ──────────────────────────
+  const submitQuiz = useCallback(
+    async (): Promise<{ error: string | null }> => {
+      if (!studentId) return { error: "Student not resolved." };
+      setSaving(true);
+      try {
+        const rows = questions
+          .filter((q) => answers[q.id] || textResponses[q.id])
+          .map(buildResponseRow);
+
+        if (rows.length > 0) {
+          const { error: err } = await supabase
+            .from("question_responses")
+            .upsert(rows, { onConflict: "student_id,question_id" });
+          if (err) throw new Error(err.message);
+        }
+
+        // Mark completed only if every question was answered, otherwise in_progress
+        const allDone = rows.length === questions.length;
+        await updateAffiliationStatus(allDone ? "completed" : "in_progress");
+
+        return { error: null };
+      } catch (err: unknown) {
+        return { error: err instanceof Error ? err.message : "Submission failed." };
+      } finally {
+        setSaving(false);
+      }
+    },
+    [studentId, questions, answers, textResponses, buildResponseRow, supabase, updateAffiliationStatus]
   );
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -336,11 +460,20 @@ function useQuiz(quizId: string) {
     current,
     currentIndex,
     selectedAnswer,
+    textResponses,
     loading,
+    accessChecked,
     saving,
     error,
     answeredCount: Object.keys(answers).length,
+    flagged,
+    isLastQuestion,
+    allAnswered,
     saveAnswer,
+    saveTextResponse,
+    saveCurrentResponse,
+    submitQuiz,
+    toggleFlag,
     goTo,
     goNext,
     goPrev,
@@ -352,41 +485,47 @@ function useQuiz(quizId: string) {
 
 export default function QuizPage() {
   const params = useParams();
+  const router = useRouter();
   const quizId = Array.isArray(params.id) ? params.id[0] : (params.id ?? "");
 
   const timer = useTimer();
-  const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
 
   const {
     navQuestions,
     current,
     currentIndex,
     selectedAnswer,
+    textResponses,
     loading,
+    accessChecked,
     saving,
     error,
     answeredCount,
     questions,
+    flagged,
+    isLastQuestion,
+    allAnswered,
     saveAnswer,
+    saveTextResponse,
+    saveCurrentResponse,
+    submitQuiz,
+    toggleFlag,
     goTo,
     goNext,
     goPrev,
     refetch,
   } = useQuiz(quizId);
 
-  const isMarked = current ? markedForReview.has(current.id) : false;
+  const isMarked = current ? (flagged[current.id] ?? false) : false;
+  // Local draft state so textarea is controlled while typing; saves to DB on blur
+  const [textResponseDraft, setTextResponseDraft] = useState<Record<string, string>>({});
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   function toggleMark() {
     if (!current) return;
-    setMarkedForReview((prev) => {
-      const next = new Set(prev);
-      if (next.has(current.id)) {
-        next.delete(current.id);
-      } else {
-        next.add(current.id);
-      }
-      return next;
-    });
+    toggleFlag(current.id);
   }
 
   async function handleSelectOption(optionId: string) {
@@ -394,16 +533,49 @@ export default function QuizPage() {
   }
 
   async function handleSaveAndNext() {
-    await goNext();
+    await saveCurrentResponse();
+    if (isLastQuestion) {
+      setSubmitError(null);
+      setShowSubmitModal(true);
+    } else {
+      goNext();
+    }
+  }
+
+  async function handleNavigateTo(index: number) {
+    await saveCurrentResponse();
+    goTo(index);
+  }
+
+  async function handleConfirmSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    const { error: err } = await submitQuiz();
+    setSubmitting(false);
+    if (err) {
+      setSubmitError(err);
+      return;
+    }
+    router.push("/students/quiz/view");
+  }
+
+  // Block rendering until status check is done to prevent UI flash before redirect
+  if (!accessChecked) {
+    return (
+      <div className="min-h-screen bg-[#f4f6fb] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 rounded-full border-4 border-[#0f2557] border-t-transparent animate-spin" />
+          <p className="text-sm text-slate-500 font-medium">Verifying access…</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div
-      className="min-h-screen bg-[#f4f6fb] flex"
-      style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}
-    >
+      className="bg-[#f4f6fb] flex overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Left Sidebar ── */}
-      <aside className="w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col p-5 gap-5 min-h-screen">
+      <aside className="w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col p-5 gap-5">
         <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
           <LayoutGrid size={13} />
           Question Navigator
@@ -419,7 +591,7 @@ export default function QuizPage() {
         ) : (
           <div className="grid grid-cols-5 gap-2">
             {navQuestions.map((item, idx) => (
-              <NavButton key={item.id} item={item} onClick={() => goTo(idx)} />
+              <NavButton key={item.id} item={item} onClick={() => handleNavigateTo(idx)} />
             ))}
           </div>
         )}
@@ -469,15 +641,57 @@ export default function QuizPage() {
       {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col">
         {/* Timer strip */}
-        <div className="flex items-center justify-end gap-4 px-8 py-3 bg-white border-b border-slate-200">
+        <div className="flex items-center justify-between gap-4 px-8 py-3 bg-white border-b border-slate-200">
+
+          <Button
+            variant="ghost"
+            className="gap-1.5 text-slate-600 hover:text-slate-900 font-medium"
+            onClick={goPrev}
+            disabled={loading || currentIndex === 0}
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </Button>
+
           <div className="flex items-center gap-2 text-sm font-mono font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">
-            <span className="text-slate-400 text-xs">⏱</span>
+            <Timer />
             {timer}
           </div>
-          <Button className="bg-[#0f2557] hover:bg-[#1a3a7a] text-white text-sm font-semibold px-5 rounded-xl gap-2">
-            Submit Exam
-            <ChevronRight size={15} />
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={toggleMark}
+              disabled={loading || !current}
+              className={`gap-2 font-medium border-slate-300 ${
+                isMarked
+                  ? "text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100"
+                  : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <BookmarkIcon size={14} fill={isMarked ? "currentColor" : "none"} />
+              {isMarked ? "Marked" : "Mark for Review"}
+            </Button>
+            {isLastQuestion ? (
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 gap-2 rounded-xl disabled:opacity-40"
+                onClick={handleSaveAndNext}
+                disabled={loading || saving}
+              >
+                <CheckCircle2 size={15} />
+                Submit Quiz
+              </Button>
+            ) : (
+              <Button
+                className="bg-[#0f2557] hover:bg-[#1a3a7a] text-white font-semibold px-6 gap-2 rounded-xl"
+                onClick={handleSaveAndNext}
+                disabled={loading}
+              >
+                Save and Next
+                <ChevronRight size={15} />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Question card */}
@@ -530,14 +744,20 @@ export default function QuizPage() {
                         Question {currentIndex + 1} · {current.points}{" "}
                         {current.points === 1 ? "Point" : "Points"}
                       </Badge>
-                      {current.difficulty !== null && (
-                        <Badge
+                      <Badge
                           variant="outline"
-                          className={`text-[10px] font-bold tracking-widest uppercase px-2.5 py-0.5 ${difficultyColor(current.difficulty)}`}
+                          className={`text-[10px] font-bold tracking-widest uppercase px-2.5 py-0.5 ${
+                            current.type === "multiple_choice"
+                              ? "text-indigo-600 bg-indigo-50 border-indigo-200"
+                              : current.type === "true_false"
+                              ? "text-emerald-600 bg-emerald-50 border-emerald-200"
+                              : current.type === "coding_response"
+                              ? "text-violet-600 bg-violet-50 border-violet-200"
+                              : "text-amber-600 bg-amber-50 border-amber-200"
+                          }`}
                         >
-                          {difficultyLabel(current.difficulty)}
+                          {current.type.replace("_", " ")}
                         </Badge>
-                      )}
                       {saving && (
                         <span className="text-[10px] text-slate-400 italic">saving…</span>
                       )}
@@ -574,23 +794,24 @@ export default function QuizPage() {
                 </p>
 
                 {/* Optional wave illustration for physics questions */}
-                {current.type === "mcq" && current.title?.toLowerCase().includes("wave") && (
+                {current.type === "multiple_choice" && current.title?.toLowerCase().includes("wave") && (
                   <WaveIllustration />
                 )}
 
-                {/* MCQ Options */}
-                {current.type === "mcq" && current.options && current.options.length > 0 ? (
+                {/* MCQ & True/False Options */}
+                {(current.type === "multiple_choice" || current.type === "true_false") && current.options && current.options.length > 0 ? (
                   <RadioGroup
                     value={selectedAnswer}
                     onValueChange={handleSelectOption}
                     className="space-y-3"
                   >
-                    {current.options.map((opt) => {
-                      const isSelected = selectedAnswer === opt.id;
+                    {current.options.map((text, idx) => {
+                      const valueKey = String(idx);
+                      const isSelected = selectedAnswer === valueKey;
                       return (
                         <label
-                          key={opt.id}
-                          htmlFor={`opt-${opt.id}`}
+                          key={valueKey}
+                          htmlFor={`opt-${valueKey}`}
                           className={`flex items-center gap-4 rounded-xl border px-5 py-4 cursor-pointer transition-all duration-150 ${
                             isSelected
                               ? "border-[#0f2557] bg-[#0f2557]/5 shadow-sm"
@@ -598,8 +819,8 @@ export default function QuizPage() {
                           }`}
                         >
                           <RadioGroupItem
-                            value={opt.id}
-                            id={`opt-${opt.id}`}
+                            value={valueKey}
+                            id={`opt-${valueKey}`}
                             className={isSelected ? "text-[#0f2557] border-[#0f2557]" : ""}
                           />
                           <span
@@ -607,63 +828,145 @@ export default function QuizPage() {
                               isSelected ? "text-[#0f2557] font-semibold" : "text-slate-700"
                             }`}
                           >
-                            {opt.text}
+                            {text}
                           </span>
                         </label>
                       );
                     })}
                   </RadioGroup>
+                ) : current.type === "short_answer" ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Your Answer</p>
+                    <textarea
+                      value={textResponseDraft[current.id] ?? textResponses[current.id] ?? ""}
+                      onChange={(e) => {
+                        setTextResponseDraft((prev) => ({ ...prev, [current.id]: e.target.value }));
+                      }}
+                      onBlur={(e) => saveTextResponse(e.target.value)}
+                      placeholder="Write your answer here…"
+                      rows={6}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-5 py-4 text-[15px] text-slate-800 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0f2557]/30 focus:border-[#0f2557] transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+                ) : current.type === "coding_response" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Your Code</p>
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">code editor</span>
+                    </div>
+                    <div className="rounded-xl border border-slate-800 bg-[#0d1117] overflow-hidden shadow-md">
+                      <div className="flex items-center gap-1.5 px-4 py-2.5 bg-[#161b22] border-b border-slate-700">
+                        <span className="w-3 h-3 rounded-full bg-red-500/70" />
+                        <span className="w-3 h-3 rounded-full bg-yellow-500/70" />
+                        <span className="w-3 h-3 rounded-full bg-green-500/70" />
+                        <span className="ml-3 text-[11px] font-mono text-slate-500">answer.js</span>
+                      </div>
+                      <textarea
+                        value={textResponseDraft[current.id] ?? textResponses[current.id] ?? ""}
+                        onChange={(e) => {
+                          setTextResponseDraft((prev) => ({ ...prev, [current.id]: e.target.value }));
+                        }}
+                        onBlur={(e) => saveTextResponse(e.target.value)}
+                        placeholder={"// Write your code here…\n"}
+                        rows={12}
+                        spellCheck={false}
+                        className="w-full bg-transparent px-5 py-4 text-[14px] font-mono text-slate-100 leading-relaxed resize-y focus:outline-none placeholder:text-slate-600"
+                      />
+                    </div>
+                  </div>
                 ) : (
-                  /* Fallback for non-MCQ or plain question body */
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm text-slate-500 italic">
-                    {current.type === "open"
-                      ? "Open-ended question — answer in the provided answer sheet."
-                      : `Question type: ${current.type}. Options not configured.`}
+                    {`Question type: ${current.type}. Options not configured.`}
                   </div>
                 )}
               </>
             )}
           </div>
         </div>
+      </main>
 
-        {/* Bottom nav */}
-        <div className="border-t border-slate-200 bg-white px-8 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            className="gap-1.5 text-slate-600 hover:text-slate-900 font-medium"
-            onClick={goPrev}
-            disabled={loading || currentIndex === 0}
-          >
-            <ChevronLeft size={16} />
-            Previous Question
-          </Button>
+      {/* ── Submit Confirmation Modal ── */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Blurred backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => !submitting && setShowSubmitModal(false)}
+          />
 
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={toggleMark}
-              disabled={loading || !current}
-              className={`gap-2 font-medium border-slate-300 ${
-                isMarked
-                  ? "text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100"
-                  : "text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <BookmarkIcon size={14} fill={isMarked ? "currentColor" : "none"} />
-              {isMarked ? "Marked" : "Mark for Review"}
-            </Button>
+          {/* Modal card */}
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md mx-4 p-8 flex flex-col items-center gap-6">
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-emerald-500" />
+            </div>
 
-            <Button
-              className="bg-[#0f2557] hover:bg-[#1a3a7a] text-white font-semibold px-6 gap-2 rounded-xl"
-              onClick={handleSaveAndNext}
-              disabled={loading || currentIndex === questions.length - 1}
-            >
-              Save and Next
-              <ChevronRight size={15} />
-            </Button>
+            {/* Copy */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                Submit Quiz?
+              </h2>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                You&apos;ve answered{" "}
+                <span className="font-semibold text-slate-700">
+                  {answeredCount} of {questions.length}
+                </span>{" "}
+                questions. Once submitted you won&apos;t be able to make changes.
+              </p>
+            </div>
+
+            {/* Unanswered warning */}
+            {!allAnswered && (
+              <div className="w-full rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
+                <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  <span className="font-semibold">
+                    {questions.length - answeredCount} question
+                    {questions.length - answeredCount !== 1 ? "s" : ""} unanswered.
+                  </span>{" "}
+                  You can still go back and answer them before submitting.
+                </p>
+              </div>
+            )}
+
+            {/* Submit error */}
+            {submitError && (
+              <div className="w-full rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+                {submitError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full">
+              <Button
+                variant="outline"
+                className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+                onClick={() => setShowSubmitModal(false)}
+                disabled={submitting}
+              >
+                Go Back
+              </Button>
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-2 rounded-xl"
+                onClick={handleConfirmSubmit}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={14} />
+                    Confirm Submit
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }

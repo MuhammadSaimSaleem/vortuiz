@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import * as LucideIcons from "lucide-react";
 import {
-  Clock,
   FileText,
   Flag,
   Star,
@@ -19,8 +18,7 @@ import {
   PlayCircle,
   ChevronLeft,
   HelpCircle,
-  Users,
-  BarChart2,
+  CalendarDays,
   Target,
   Lock,
 } from "lucide-react";
@@ -43,21 +41,14 @@ interface Quiz {
   difficulty: string | null;
   duration_minutes: number | null;
   passing_score: number | null;
-  participant_count: number;
+  created_at: string;
   status: string;
   closed_at: string | null;
   cover_gradient: string | null;
   topics: string[] | null;
   subject_id: string;
   subject?: Subject;
-}
-
-interface QuizAttempt {
-  quiz_id: string;
-  status: string;
-  score: number | null;
-  max_score: number | null;
-  percentage: number | null;
+  affiliationStatus: string | null;
 }
 
 // ─── Color theme map ──────────────────────────────────────────────────────────
@@ -151,7 +142,6 @@ export default function QuizDetailPage() {
   const router = useRouter();
 
   const [quiz, setQuiz]       = useState<Quiz | null>(null);
-  const [attempt, setAttempt] = useState<QuizAttempt | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
 
@@ -174,7 +164,7 @@ export default function QuizDetailPage() {
             difficulty,
             duration_minutes,
             passing_score,
-            participant_count,
+            created_at,
             status,
             closed_at,
             cover_gradient,
@@ -201,12 +191,11 @@ export default function QuizDetailPage() {
         const normalised: Quiz = {
           ...quizData,
           subject: Array.isArray(quizData.subjects) ? quizData.subjects[0] : quizData.subjects,
+          affiliationStatus: null,
         } as Quiz;
 
         // 2. Fetch current user's attempt for this quiz
         const { data: { user } } = await supabase.auth.getUser();
-
-        let foundAttempt: QuizAttempt | undefined;
 
         if (user) {
           const { data: studentData } = await supabase
@@ -216,22 +205,37 @@ export default function QuizDetailPage() {
             .maybeSingle();
 
           if (studentData) {
-            const { data: attemptData } = await supabase
-              .from("quiz_attempts")
-              .select("quiz_id, status, score, max_score, percentage")
+            // Fetch affiliation status
+            const { data: affiliationData } = await supabase
+              .from("quiz_affiliations")
+              .select("status")
               .eq("student_id", studentData.id)
               .eq("quiz_id", quizId)
-              .order("started_at", { ascending: false })
-              .limit(1)
               .maybeSingle();
 
-            if (attemptData) foundAttempt = attemptData as QuizAttempt;
+            const affStatus = affiliationData?.status?.toLowerCase() ?? null;
+
+            // Completed → redirect to results page
+            if (affStatus === "completed" && !cancelled) {
+              router.replace(`/student/quiz/${quizId}/result`);
+              return;
+            }
+
+            // Block access if not assigned/available/in_progress
+            const isAccessible =
+              affStatus === "available" || affStatus === "in_progress";
+
+            if (!isAccessible && !cancelled) {
+              router.replace("/students/quiz/view");
+              return;
+            }
+
+            normalised.affiliationStatus = affStatus;
           }
         }
 
         if (!cancelled) {
           setQuiz(normalised);
-          setAttempt(foundAttempt);
         }
       } catch (err) {
         console.error("QuizDetailPage fetch error:", err);
@@ -249,14 +253,16 @@ export default function QuizDetailPage() {
   if (loading) return <PageSkeleton />;
   if (!quiz) return null;
 
-  const subject   = quiz.subject;
-  const theme     = getTheme(subject?.color_theme ?? null);
-  const diff      = difficultyConfig(quiz.difficulty);
-  const topics    = Array.isArray(quiz.topics) ? quiz.topics : [];
-  const isClosed  = quiz.closed_at ? new Date(quiz.closed_at) < new Date() : false;
+  const subject       = quiz.subject;
+  const theme         = getTheme(subject?.color_theme ?? null);
+  const diff          = difficultyConfig(quiz.difficulty);
+  const topics        = Array.isArray(quiz.topics) ? quiz.topics : [];
+  const isClosed      = quiz.closed_at ? new Date(quiz.closed_at) < new Date() : false;
+  const affStatus     = quiz.affiliationStatus?.toLowerCase() ?? null;
+  const isInProgress  = affStatus === "in_progress";
+  const isAvailable   = affStatus === "available" && !isClosed;
 
   const takeHref = `/students/quiz/${quiz.id}/start`;
-  // const resultsHref = `/students/quiz/${quiz.id}/result` Will add in a bit
 
   return (
     <div className="min-h-full bg-surface">
@@ -314,13 +320,11 @@ export default function QuizDetailPage() {
                     <Star className="h-2.5 w-2.5 fill-current" />
                     {diff.label.toUpperCase()}
                   </span>
-                  {attempt?.status === "submitted" && (
-                    <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-bold">
-                      Completed · {attempt.percentage != null ? `${Math.round(attempt.percentage)}%` : `${attempt.score}/${attempt.max_score}`}
-                    </Badge>
-                  )}
-                  {attempt?.status === "in_progress" && (
+                  {isInProgress && (
                     <Badge className="bg-amber-400 text-white border-0 text-[10px] font-bold">In Progress</Badge>
+                  )}
+                  {isAvailable && (
+                    <Badge className="bg-blue-500 text-white border-0 text-[10px] font-bold">Available</Badge>
                   )}
                 </div>
               )}
@@ -343,7 +347,7 @@ export default function QuizDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             quiz.duration_minutes != null && quiz.duration_minutes > 0 && {
-              icon: <Clock className="h-4 w-4" />,
+              icon: <Timer className="h-4 w-4" />,
               label: "Duration",
               value: `${quiz.duration_minutes} min`,
               color: "text-blue-600 bg-blue-50",
@@ -360,10 +364,10 @@ export default function QuizDetailPage() {
               value: `${quiz.passing_score}%`,
               color: "text-emerald-600 bg-emerald-50",
             },
-            quiz.participant_count > 0 && {
-              icon: <Users className="h-4 w-4" />,
-              label: "Participants",
-              value: quiz.participant_count.toLocaleString(),
+            quiz.created_at && {
+              icon: <CalendarDays className="h-4 w-4" />,
+              label: "Created",
+              value: new Date(quiz.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }),
               color: "text-purple-600 bg-purple-50",
             },
           ]
@@ -425,35 +429,28 @@ export default function QuizDetailPage() {
               <Lock className="h-4 w-4 mr-2" />
               Quiz Closed
             </Button>
-          ) : attempt?.status === "submitted" ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link href={"#"} className="flex-1">
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm h-12 gap-2 transition-colors">
-                  <BarChart2 className="h-4 w-4" />
-                  View Results
-                </Button>
-              </Link>
-              <Link href={takeHref} className="flex-1">
-                <Button variant="outline" className="w-full rounded-xl font-bold text-sm h-12 gap-2 border-border">
-                  <PlayCircle className="h-4 w-4" />
-                  Retake Quiz
-                </Button>
-              </Link>
-            </div>
-          ) : attempt?.status === "in_progress" ? (
+          ) : isInProgress ? (
             <Link href={takeHref}>
               <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm h-12 gap-2 transition-colors">
                 <PlayCircle className="h-4 w-4" />
                 Continue Quiz
               </Button>
             </Link>
-          ) : (
+          ) : isAvailable ? (
             <Link href={takeHref}>
               <Button className="w-full bg-brand-navy hover:bg-brand-blue text-white rounded-xl font-bold text-sm h-12 gap-2 transition-all hover:shadow-lg hover:shadow-brand-navy/20">
                 <PlayCircle className="h-4 w-4" />
                 Start Quiz
               </Button>
             </Link>
+          ) : (
+            <Button
+              disabled
+              className="w-full bg-slate-100 text-slate-400 rounded-xl font-bold text-sm h-12 cursor-not-allowed"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Not Available
+            </Button>
           )}
         </div>
 

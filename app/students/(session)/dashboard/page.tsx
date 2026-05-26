@@ -266,9 +266,14 @@ function OverallProgress({ studentData, completedCount, totalCount, loading }: O
 interface AssignedQuizzesProps {
   quizzes: AssignedQuiz[];
   loading: boolean;
+  totalCount?: number;
 }
 
-function AssignedQuizzes({ quizzes, loading }: AssignedQuizzesProps) {
+function AssignedQuizzes({ quizzes, loading, totalCount }: AssignedQuizzesProps) {
+  const visibleQuizzes = quizzes.slice(0, 4);
+  const total = totalCount ?? quizzes.length;
+  const hasMore = total > 4;
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -277,6 +282,11 @@ function AssignedQuizzes({ quizzes, loading }: AssignedQuizzesProps) {
             <Scroll className="h-3.5 w-3.5 text-brand-blue" />
           </div>
           <h2 className="text-base font-bold text-brand-navy">Assigned Quizzes</h2>
+          {!loading && hasMore && (
+            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-brand-navy text-white text-[11px] font-bold">
+              {total}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <Link href="/quizzes" className="text-xs font-semibold text-slate-400 hover:text-brand-blue transition-colors">
@@ -299,19 +309,19 @@ function AssignedQuizzes({ quizzes, loading }: AssignedQuizzesProps) {
               <Skeleton className="h-9 w-24 ml-auto" />
             </div>
           ))
-        ) : quizzes.length === 0 ? (
+        ) : visibleQuizzes.length === 0 ? (
           <div className="col-span-2 rounded-2xl border border-dashed border-border bg-white p-8 text-center text-slate-400 text-sm">
             No quizzes assigned right now. Check back soon!
           </div>
         ) : (
-          quizzes.map((quiz) => (
+          visibleQuizzes.map((quiz) => (
             <div
               key={quiz.id}
               className="rounded-2xl border border-border overflow-hidden flex flex-col"
               style={{
                 background: quiz.coverGradient
-                  ? `linear-gradient(to left, #ffffff 0%, #ffffff 1%, ${quiz.coverGradient.replace(/^linear-gradient\([^,]+,\s*/, "").replace(/\)$/, "")} 100%)`
-                  : "linear-gradient(to left, #ffffff 0%, #f1f5f9 100%)",
+                  ? `linear-gradient(to left, ${quiz.coverGradient.replace(/^linear-gradient\([^,]+,\s*/, "").replace(/\)$/, "")})`
+                  : "linear-gradient(to left, #0f172a, #1e293b)", // Clean dark-mode fallback (Slate 900 to 800)
               }}
 >
               {/* Card header */}
@@ -409,9 +419,9 @@ function AssignedQuizzes({ quizzes, loading }: AssignedQuizzesProps) {
                     {new Date(quiz.assignedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </span>
                 </div>
-                <Link href={`/quiz/${quiz.id}/take`} className="shrink-0">
+                <Link href={`/students/quiz/${quiz.id}/view`} className="shrink-0">
                   <Button className="bg-brand-navy hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
-                    Take Now
+                    View Details
                   </Button>
                 </Link>
               </div>
@@ -570,7 +580,6 @@ function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: Exp
                 <Link
                   href={`/students/quiz/view/${subject.slug}`}
                   className="w-full"
-                  title={subject.description ?? subject.name}
                 >
                   <div
                     className={`w-full aspect-square rounded-2xl ${theme.bg} flex items-center justify-center transition-transform group-hover:scale-105 relative`}
@@ -631,7 +640,6 @@ export default function StudentDashboard() {
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
   // Single unified loading flag — true until all async work is done
@@ -649,7 +657,6 @@ export default function StudentDashboard() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError) console.error("Auth error:", authError.message);
         if (!user || cancelled) return;
-        if (!cancelled) setAuthUserId(user.id);
 
         // 2. Profile + student record in parallel
         const { data: studentResult, error: studentError} = await supabase
@@ -662,24 +669,28 @@ export default function StudentDashboard() {
 
         if (studentError) console.error("Student fetch error:", studentError);
 
-        // 3. Subjects + enrollments — fetched for ALL users, no student record needed
-        const [allSubjectsResult, enrolledResult] = await Promise.all([
-          supabase
-            .from("subjects")
-            .select("id, name, slug, description, icon_name, color_theme")
-            .order("name"),
-          supabase
-            .from("subject_affiliations")
-            .select("subject_id")
-            .eq("student_id", user.id),
-        ]);
+        // 3. Subjects + enrollments — requires student record for subject_affiliations (student_id = students.id)
+        const allSubjectsResult = await supabase
+          .from("subjects")
+          .select("id, name, slug, description, icon_name, color_theme")
+          .order("name");
 
         if (cancelled) return;
-
         if (allSubjectsResult.error) console.error("Subjects fetch error:", allSubjectsResult.error.message);
-        if (enrolledResult.error) console.error("Enrollments fetch error:", enrolledResult.error.message);
 
-        const enrolledIds = new Set((enrolledResult.data ?? []).map((r) => r.subject_id));
+        // subject_affiliations.student_id references students(id), not auth.users(id)
+        let enrolledIds = new Set<string>();
+        if (studentResult) {
+          const enrolledResult = await supabase
+            .from("subject_affiliations")
+            .select("subject_id")
+            .eq("student_id", studentResult.id);
+
+          if (cancelled) return;
+          if (enrolledResult.error) console.error("Enrollments fetch error:", enrolledResult.error.message);
+          enrolledIds = new Set((enrolledResult.data ?? []).map((r) => r.subject_id));
+        }
+
         const mappedSubjects: SubjectItem[] = (allSubjectsResult.data ?? []).map((s) => ({
           id: s.id,
           name: s.name,
@@ -761,11 +772,12 @@ export default function StudentDashboard() {
           const now = new Date();
           const activeAffiliations = typedAffiliations.filter((a) => {
             const q = a.quizzes;
+            if (!q) return false; // orphaned affiliation — quiz was deleted
             const notCompleted = a.status !== "completed";
             const quizPublished = q.status === "published";
             const notClosed = !q.closed_at || new Date(q.closed_at) > now;
             return notCompleted && quizPublished && notClosed;
-          }).slice(0, 4); // show up to 4 assigned quizzes on dashboard
+          }); // full list — UI caps display at 4 and shows total count
 
           mappedQuizzes = activeAffiliations.map((a) => {
             const { tag, tagVariant } = deriveQuizTag(a.quizzes);
@@ -842,8 +854,11 @@ export default function StudentDashboard() {
   const overallLoading = loading;
 
   // ── Enroll / unenroll handler ─────────────────────────────────────────────
+  // subject_affiliations.student_id references students(id), not auth.users(id)
+  const studentId = studentData?.id;
+
   const handleToggleEnroll = useCallback(async (subjectId: string, enrolled: boolean) => {
-    if (!authUserId) return;
+    if (!studentId) return;
     setEnrollingId(subjectId);
     try {
       if (enrolled) {
@@ -851,13 +866,13 @@ export default function StudentDashboard() {
           .from("subject_affiliations")
           .delete()
           .eq("subject_id", subjectId)
-          .eq("student_id", authUserId);
+          .eq("student_id", studentId);
         if (error) throw error;
         toast.success("Left subject");
       } else {
         const { error } = await supabase
           .from("subject_affiliations")
-          .insert({ subject_id: subjectId, student_id: authUserId });
+          .insert({ subject_id: subjectId, student_id: studentId });
         if (error) throw error;
         toast.success("Joined subject!");
       }
@@ -871,7 +886,7 @@ export default function StudentDashboard() {
     } finally {
       setEnrollingId(null);
     }
-  }, [authUserId, supabase]);
+  }, [studentId, supabase]);
 
   return (
     <div className="flex min-h-screen bg-surface flex-1 flex-col">
@@ -889,7 +904,7 @@ export default function StudentDashboard() {
 
         {/* Quizzes + scores */}
         <div className="grid grid-cols-[1fr_280px] gap-5 items-start">
-          <AssignedQuizzes quizzes={assignedQuizzes} loading={loading} />
+          <AssignedQuizzes quizzes={assignedQuizzes} loading={loading} totalCount={assignedQuizzes.length} />
           <PerformanceScores scores={scoreItems} loading={loading} />
         </div>
 

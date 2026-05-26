@@ -39,46 +39,52 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const navItems = role === "teacher" ? teacherNavItems : studentNavItems;
-
   const router = useRouter();
 
   const handleLogoClick = () => {
     const nextRole = role === "teacher" ? "student" : "teacher";
-    
     toggleRole(); 
-    
     router.push(`/${nextRole}s/dashboard`);
   };
 
   const handleLogOut = async () => {
     const supabase = createClient();
-
     const { error } = await supabase.auth.signOut();
     
     if (error) {
       console.error("Error logging out:", error.message);
     } else {
-      // 2. Redirect the user to the login page or home
       router.push("/auth");
-      router.refresh(); // Clears any server-side cached data
+      router.refresh();
     }
-  }
+  };
 
   return (
     <aside className="inset-y-0 left-0 z-20 w-full h-full md:w-64 flex flex-col border-r border-slate-200 bg-white">
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-4">
+      <div className="flex items-center h-14 gap-2 border-b border-slate-100 px-4 ml-1">
         <button onClick={handleLogoClick} type="button">
           <Logo />
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 mt-6 space-y-0.5 p-3">
+      <nav className="flex-1 mt-4 space-y-0.5 p-3">
         {navItems.map(({ icon: Icon, label, href }) => {
-          const isActive = label === "Dashboard" 
-          ? pathname === href 
-          : pathname.startsWith(href);
+          // 1. Exact match setup
+          let isActive = pathname === href;
+
+          // 2. Handle dynamic quiz child routes (e.g., /students/quiz/[id]/view, /students/quiz/[id]/start)
+          if (!isActive && href.includes("/quiz/view")) {
+            // This matches: /students/quiz/ANY_ID/anything (like /view, /start, /result)
+            const quizChildRegex = new RegExp(`^/(students|teachers)/quiz/[^/]+/(view|start|result|review)(/.*)?$`);
+            isActive = quizChildRegex.test(pathname);
+          }
+
+          // 3. Fallback for other standard nested routes (e.g., /teachers/analytics/deep-dive)
+          if (!isActive) {
+            isActive = pathname.startsWith(`${href}/`);
+          }
 
           return (
             <Link

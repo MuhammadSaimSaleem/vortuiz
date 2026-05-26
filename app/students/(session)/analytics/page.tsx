@@ -407,6 +407,31 @@ export default function PerformancePage() {
 
         {/* Right column */}
         <div className="space-y-4">
+
+          {/* Keep it up XP card */}
+          <div className="rounded-2xl bg-brand-navy p-5 text-white relative overflow-hidden">
+            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-white/5" />
+            <div className="absolute top-2 right-2">
+              <TrendingUp className="h-12 w-12 text-white/10" />
+            </div>
+            <p className="text-sm font-bold text-white mb-1.5 relative z-10">Keep it up!</p>
+            <p className="text-xs text-blue-200 leading-relaxed mb-4 relative z-10">
+              You&apos;re only <span className="font-bold text-white">400 XP</span> away from reaching Level 13 and unlocking the &apos;Master Researcher&apos; title.
+            </p>
+            {/* XP progress bar */}
+            <div className="relative z-10">
+              <div className="flex justify-between text-[10px] text-blue-300 mb-1.5 font-semibold">
+                <span>Level 12</span>
+                <span>Level 13</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/15 overflow-hidden">
+                <div className="h-full rounded-full bg-white/70 transition-all duration-1000"
+                  style={{ width: "68%" }} />
+              </div>
+              <p className="text-[10px] text-blue-300 mt-1.5">3,200 / 3,600 XP</p>
+            </div>
+          </div>
+
           {/* Skill Mastery */}
           <div className="rounded-2xl bg-brand-navy overflow-hidden p-5 text-white">
             <div className="flex items-center gap-2 mb-4">
@@ -452,30 +477,6 @@ export default function PerformancePage() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Keep it up XP card */}
-          <div className="rounded-2xl bg-brand-navy p-5 text-white relative overflow-hidden">
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-white/5" />
-            <div className="absolute top-2 right-2">
-              <TrendingUp className="h-12 w-12 text-white/10" />
-            </div>
-            <p className="text-sm font-bold text-white mb-1.5 relative z-10">Keep it up!</p>
-            <p className="text-xs text-blue-200 leading-relaxed mb-4 relative z-10">
-              You&apos;re only <span className="font-bold text-white">400 XP</span> away from reaching Level 13 and unlocking the &apos;Master Researcher&apos; title.
-            </p>
-            {/* XP progress bar */}
-            <div className="relative z-10">
-              <div className="flex justify-between text-[10px] text-blue-300 mb-1.5 font-semibold">
-                <span>Level 12</span>
-                <span>Level 13</span>
-              </div>
-              <div className="h-2 rounded-full bg-white/15 overflow-hidden">
-                <div className="h-full rounded-full bg-white/70 transition-all duration-1000"
-                  style={{ width: "68%" }} />
-              </div>
-              <p className="text-[10px] text-blue-300 mt-1.5">3,200 / 3,600 XP</p>
             </div>
           </div>
         </div>
