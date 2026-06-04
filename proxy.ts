@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const currentPath = request.nextUrl.pathname
 
-  const publicPages = ['/', '/auth', '/auth/callback', '/teachers', '/students', '/pricing']
+  const publicPages = ['/', '/auth', '/auth/callback', 'features', '/teachers', '/students', '/pricing']
   const isPublicPage = publicPages.includes(currentPath)
 
   // 1. Unauthenticated users trying to access protected pages

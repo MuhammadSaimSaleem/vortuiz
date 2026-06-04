@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Bell,
   BookOpen,
   ChevronRight,
   Download,
@@ -73,8 +71,6 @@ function CircleProgress({ value }: { value: number }) {
 }
 
 export default function TeacherDashboard() {
-  const [search, setSearch] = useState("");
-
   return (
     <div className="bg-surface flex-1 flex flex-col min-h-screen">
 

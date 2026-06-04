@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   XAxis,
   YAxis,
@@ -47,6 +47,12 @@ interface SubjectMastery {
 interface HeatmapCell {
   day: string;
   slots: number[]; // 0–4 intensity
+}
+
+interface ChartToolTipProps {
+  active?: boolean;
+  payload?: Array<{ value?: number | string }>;
+  label?: string;
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -168,7 +174,7 @@ function StatCard({
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({ active, payload, label }: ChartToolTipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-border rounded-xl shadow-md px-4 py-3 text-sm">
@@ -182,8 +188,6 @@ function ChartTooltip({ active, payload, label }: any) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PerformanceAnalytics() {
-  const [activeTab, setActiveTab] = useState<"thisPeriod" | "lastPeriod">("thisPeriod");
-
   const stats = useMemo(() => ({
     avgScore: "84.5%",
     completionRate: "92.1%",
@@ -339,7 +343,7 @@ export default function PerformanceAnalytics() {
                     >
                       <div className="col-span-3">
                         <p className="text-sm text-brand-dark font-medium leading-snug">
-                          "{q.question}"
+                          {q.question}
                         </p>
                         <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mt-1">
                           {q.quiz}

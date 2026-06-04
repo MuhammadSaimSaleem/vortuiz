@@ -33,7 +33,6 @@ import { useRouter } from "next/navigation";
 interface Question {
   id: string;
   quiz_id: string;
-  subject_id: string | null;
   body: string;
   type: string;
   order_index: number;
@@ -242,7 +241,7 @@ function useQuiz(quizId: string) {
         const { data: qData, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id, quiz_id, subject_id, body, type, title, options, order_index, points"
+            "id, quiz_id, body, type, title, options, order_index, points"
           )
           .eq("quiz_id", quizId)
           .order("order_index", { ascending: true });

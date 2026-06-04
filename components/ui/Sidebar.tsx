@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useUserRole } from "@/contexts/UserRoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlignJustify,
   BarChart2,
@@ -35,26 +35,26 @@ const studentNavItems = [
 ];
 
 export function Sidebar() {
-  const { role, toggleRole } = useUserRole();
+  const { role } = useAuth();
   const pathname = usePathname();
+
+  const supabase = createClient();
 
   const navItems = role === "teacher" ? teacherNavItems : studentNavItems;
   const router = useRouter();
 
   const handleLogoClick = () => {
     const nextRole = role === "teacher" ? "student" : "teacher";
-    toggleRole(); 
     router.push(`/${nextRole}s/dashboard`);
   };
 
   const handleLogOut = async () => {
-    const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     
     if (error) {
       console.error("Error logging out:", error.message);
     } else {
-      router.push("/auth");
+      router.replace("/auth");
       router.refresh();
     }
   };
@@ -71,17 +71,13 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 mt-4 space-y-0.5 p-3">
         {navItems.map(({ icon: Icon, label, href }) => {
-          // 1. Exact match setup
           let isActive = pathname === href;
 
-          // 2. Handle dynamic quiz child routes (e.g., /students/quiz/[id]/view, /students/quiz/[id]/start)
           if (!isActive && href.includes("/quiz/view")) {
-            // This matches: /students/quiz/ANY_ID/anything (like /view, /start, /result)
             const quizChildRegex = new RegExp(`^/(students|teachers)/quiz/[^/]+/(view|start|result|review)(/.*)?$`);
             isActive = quizChildRegex.test(pathname);
           }
 
-          // 3. Fallback for other standard nested routes (e.g., /teachers/analytics/deep-dive)
           if (!isActive) {
             isActive = pathname.startsWith(`${href}/`);
           }

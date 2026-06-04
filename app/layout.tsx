@@ -3,7 +3,7 @@ import { Inter, Lexend, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { UserRoleProvider } from "@/contexts/UserRoleContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const inter = Inter({
   variable:'--font-sans',
@@ -38,9 +38,11 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", jakarta.variable, lexend.variable, "font-sans", inter.variable)}
     >
       <body className="min-h-full flex flex-col bg-slate-200">
-        <TooltipProvider>
-          <UserRoleProvider>{children}</UserRoleProvider>
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </AuthProvider>
       </body>
     </html>
   );

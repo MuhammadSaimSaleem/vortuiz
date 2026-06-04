@@ -65,14 +65,6 @@ interface Quiz {
   subject?: Subject;
 }
 
-interface QuizAttempt {
-  quiz_id: string;
-  status: string;
-  score: number | null;
-  max_score: number | null;
-  percentage: number | null;
-}
-
 // ─── Color theme map ──────────────────────────────────────────────────────────
 const COLOR_THEMES: Record<
   string,
@@ -169,23 +161,17 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 // ─── Quiz Card ────────────────────────────────────────────────────────────────
-function QuizCard({
-  quiz,
-  attempt,
-}: {
-  quiz: Quiz;
-  attempt: QuizAttempt | undefined;
-}) {
+function QuizCard({ quiz }: { quiz: Quiz }) {
   const subject = quiz.subject;
   const theme = getTheme(subject?.color_theme ?? null);
   const diff = difficultyConfig(quiz.difficulty);
   const isClosed = quiz.closed_at ? new Date(quiz.closed_at) < new Date() : false;
 
-  // Derive canonical status — affiliation status is the source of truth
+  // Derive canonical status exclusively from quiz_affiliations status
   const affStatus = quiz.affiliationStatus?.toLowerCase() ?? null;
-  const isCompleted  = affStatus === "completed"   || attempt?.status === "submitted";
-  const isInProgress = !isCompleted && (affStatus === "in_progress" || attempt?.status === "in_progress");
-  const isAvailable  = !isCompleted && !isInProgress && affStatus === "available" && !isClosed;
+  const isCompleted  = affStatus === "completed" || affStatus === "submitted";
+  const isInProgress = affStatus === "in_progress";
+  const isAvailable  = affStatus === "available" && !isClosed;
   const isLocked     = !isCompleted && !isInProgress && !isAvailable;
 
   const startHref   = `/students/quiz/${quiz.id}/start`;
@@ -203,7 +189,7 @@ function QuizCard({
   // Status badge shown on the cover
   const statusBadge = isCompleted ? (
     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
-      Completed{attempt?.percentage != null ? ` · ${Math.round(attempt.percentage)}%` : ""}
+      Completed
     </span>
   ) : isInProgress ? (
     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
@@ -373,8 +359,6 @@ function QuizCard({
   );
 }
 
-
-
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 function QuizCardSkeleton() {
   return (
@@ -407,7 +391,6 @@ function StatChipSkeleton() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const [quizzes,    setQuizzes]    = useState<Quiz[]>([]);
-  const [attempts,   setAttempts]   = useState<QuizAttempt[]>([]);
   const [subjects,   setSubjects]   = useState<Subject[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -419,7 +402,6 @@ export default function QuizPage() {
   const [filterSubj, setFilterSubj] = useState("all");
   const [filterStat, setFilterStat] = useState("all");
 
-  // Stable supabase client — created once, never re-created on render
   const supabase = createClient();
 
   const handleRetry = useCallback(() => {
@@ -443,7 +425,6 @@ export default function QuizPage() {
         if (!user) {
           if (!cancelled) {
             setQuizzes([]);
-            setAttempts([]);
             setSubjects([]);
           }
           return;
@@ -458,13 +439,12 @@ export default function QuizPage() {
         if (!studentData) {
           if (!cancelled) {
             setQuizzes([]);
-            setAttempts([]);
             setSubjects([]);
           }
           return;
         }
 
-        // 2. Fetch assigned quizzes via quiz_affiliations (same pattern as dashboard)
+        // 2. Fetch assigned quizzes via quiz_affiliations
         const { data: affiliationsData, error: affiliationsError } = await supabase
           .from("quiz_affiliations")
           .select(`
@@ -499,7 +479,7 @@ export default function QuizPage() {
 
         if (affiliationsError) throw affiliationsError;
 
-        // 3. Extract and normalise quizzes from affiliations (guard against deleted quizzes)
+        // 3. Extract and normalise quizzes from affiliations
         const normalised: Quiz[] = (affiliationsData ?? [])
           .filter((a) => a.quizzes != null && (a.quizzes as unknown as { status: string }).status === "published")
           .map((a) => {
@@ -522,33 +502,9 @@ export default function QuizPage() {
           a.name.localeCompare(b.name)
         );
 
-        // 5. Fetch attempts for assigned quiz ids
-        const mappedAttempts: QuizAttempt[] = [];
-
-        if (normalised.length > 0) {
-          const quizIds = normalised.map((q) => q.id);
-
-          const { data: attemptsData } = await supabase
-            .from("quiz_attempts")
-            .select("quiz_id, status, score, max_score, percentage")
-            .eq("student_id", studentData.id)
-            .in("quiz_id", quizIds)
-            .order("started_at", { ascending: false });
-
-          // Keep only the most recent attempt per quiz
-          const seen = new Set<string>();
-          for (const a of attemptsData ?? []) {
-            if (!seen.has(a.quiz_id)) {
-              seen.add(a.quiz_id);
-              mappedAttempts.push(a as QuizAttempt);
-            }
-          }
-        }
-
         if (!cancelled) {
           setSubjects(derivedSubjects);
           setQuizzes(normalised);
-          setAttempts(mappedAttempts);
         }
       } catch (err) {
         console.error("QuizPage fetch error:", err);
@@ -571,11 +527,6 @@ export default function QuizPage() {
   }, [supabase, retryCount]);
 
   // ── Derived / memoised values ─────────────────────────────────────────────
-  const attemptMap = useMemo(
-    () => new Map(attempts.map((a) => [a.quiz_id, a])),
-    [attempts]
-  );
-
   const filtered = useMemo(() => {
     return quizzes.filter((q) => {
       const name = q.name?.toLowerCase() ?? "";
@@ -589,27 +540,29 @@ export default function QuizPage() {
         (q.difficulty ?? "").toLowerCase() === filterDiff.toLowerCase();
       const matchSubj =
         filterSubj === "all" || q.subject_id === filterSubj;
-      const attempt = attemptMap.get(q.id);
+      
+      const affStatus = q.affiliationStatus?.toLowerCase() ?? "";
       const derivedStatus =
-        attempt?.status === "submitted"
+        affStatus === "completed" || affStatus === "submitted"
           ? "completed"
-          : attempt?.status === "in_progress"
+          : affStatus === "in_progress"
           ? "in-progress"
           : q.closed_at && new Date(q.closed_at) < new Date()
           ? "closed"
           : "available";
+
       const matchStat = filterStat === "all" || derivedStatus === filterStat;
       return matchSearch && matchDiff && matchSubj && matchStat;
     });
-  }, [quizzes, search, filterDiff, filterSubj, filterStat, attemptMap]);
+  }, [quizzes, search, filterDiff, filterSubj, filterStat]);
 
   const stats = useMemo(() => {
     const total     = quizzes.length;
-    const available = quizzes.filter((q) => !attemptMap.has(q.id)).length;
-    const inProg    = attempts.filter((a) => a.status === "in_progress").length;
-    const completed = attempts.filter((a) => a.status === "submitted").length;
+    const available = quizzes.filter((q) => q.affiliationStatus === "available" || !q.affiliationStatus).length;
+    const inProg    = quizzes.filter((q) => q.affiliationStatus === "in_progress").length;
+    const completed = quizzes.filter((q) => q.affiliationStatus === "completed" || q.affiliationStatus === "submitted").length;
     return { total, available, inProg, completed };
-  }, [quizzes, attempts, attemptMap]);
+  }, [quizzes]);
 
   const clearFilters = useCallback(() => {
     setSearch("");
@@ -681,7 +634,7 @@ export default function QuizPage() {
 
           {/* Subject filter */}
           <Select value={filterSubj} onValueChange={setFilterSubj}>
-            <SelectTrigger className="h-9 text-sm border-border rounded-xl w-36 focus:ring-brand-blue">
+            <SelectTrigger className="h-9 text-sm border-border rounded-xl focus:ring-brand-blue">
               <Filter className="h-3.5 w-3.5 text-slate-400 mr-1.5 shrink-0" />
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
@@ -783,7 +736,6 @@ export default function QuizPage() {
                   <QuizCard
                     key={quiz.id}
                     quiz={quiz}
-                    attempt={attemptMap.get(quiz.id)}
                   />
                 ))}
               </div>

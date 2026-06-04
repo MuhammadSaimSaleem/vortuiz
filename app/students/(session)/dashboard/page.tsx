@@ -289,7 +289,7 @@ function AssignedQuizzes({ quizzes, loading, totalCount }: AssignedQuizzesProps)
           )}
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/quizzes" className="text-xs font-semibold text-slate-400 hover:text-brand-blue transition-colors">
+          <Link href="/students/quiz/view" className="text-xs font-semibold text-slate-400 hover:text-brand-blue transition-colors">
             View All
           </Link>
           <Link href="/students/analytics" className="flex items-center gap-1.5 text-xs font-semibold text-brand-blue hover:opacity-80 transition-opacity">

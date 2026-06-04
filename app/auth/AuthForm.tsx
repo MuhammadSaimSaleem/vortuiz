@@ -35,9 +35,12 @@ export default function AuthForm() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
+  const modeParam = searchParams.get('mode');
   const redirectTo = searchParams.get('next') || '/'
 
-  const [tab, setTab] = useState<"login" | "signup">("login");
+  const [tab, setTab] = useState<"login" | "signup">(
+    modeParam === "signup" ? "signup" : "login"
+  );
   const [step, setStep] = useState<"1" | "2">("1");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);

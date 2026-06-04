@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
 import Navbar from "@/components/ui/NavBar";
 import Footer from "@/components/ui/Footer";
 import { HiOutlineSparkles } from "react-icons/hi2";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useInView(threshold = 0.15) {
@@ -176,7 +178,7 @@ function MasteryFeatures() {
               { bg: "bg-teal-400",   icon: <Medal className="h-4 w-4" /> },
               { bg: "bg-purple-400", icon: <Trophy className="h-4 w-4" /> },
             ].map((b, i) => (
-              <div key={i} className={`h-9 w-9 rounded-full ${b.bg} flex items-center justify-center text-white border-2 border-brand-navy`}>
+              <div key={i} className={`${b.bg} h-9 w-9 rounded-full flex items-center justify-center text-white border-2 border-brand-navy`}>
                 {b.icon}
               </div>
             ))}
@@ -346,6 +348,32 @@ function CTA() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function StudentsPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) return;
+
+      // Fetch the user's role from your profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile?.role === "teacher") {
+        router.replace("/teachers/dashboard");
+      } else {
+        router.replace("/students");
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-surface text-foreground">
       <Navbar />

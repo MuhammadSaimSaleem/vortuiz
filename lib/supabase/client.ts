@@ -47,12 +47,13 @@ export const connectGoogle = async ({ onNewUser }: ConnectGoogleProps) => {
 
     window.removeEventListener('message', handleMessage);
 
-    const { isNewUser } = event.data.data;
+    // 1. Destructure role from the event payload
+    const { isNewUser, role } = event.data.data;
 
     if (isNewUser) {
       onNewUser?.();
     } else {
-      window.location.href = '/students/dashboard';
+      window.location.href = `/${role}s/dashboard`;
     }
   };
 

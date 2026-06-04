@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         email: user?.email,
         full_name: user?.user_metadata.full_name || user?.user_metadata.name,
         provider: user?.app_metadata.provider,
+        role:  profile?.role
       };
     
       // FIX: Use the 'origin' string evaluated from the request object instead of window.location.origin
