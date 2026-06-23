@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
+import { useProfile } from "@/contexts/ProfileContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface AssignedQuiz {
@@ -79,23 +80,23 @@ interface ScoreItem {
   iconBg: string;
 }
 
-interface StudentData {
+interface SubjectScore {
   id: string;
-  user_id: string;
+  score: number;
+  quizzes: {
+    subject_id: string;
+    subjects: {
+      id: string;
+      name: string;
+    };
+  };
+}
+
+interface StudentData {
   top_percentile: number | null;
   overall_percentile: number | null;
   accuracy_rate: number | null;
   top_subject: string | null;
-}
-
-interface SubjectScore {
-  id: string;
-  score: number;
-  recorded_at: string;
-  subjects: {
-    name: string;
-    code: string;
-  };
 }
 
 // ─── Subject interfaces ──────────────────────────────────────────────────────
@@ -136,7 +137,6 @@ function JoinQuizBanner() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleJoin = useCallback(async () => {
     const trimmed = code.trim().toUpperCase();
@@ -176,7 +176,7 @@ function JoinQuizBanner() {
     } finally {
       setLoading(false);
     }
-  }, [code, router, supabase]);
+  }, [code, router]);
 
   return (
     <div className="rounded-2xl bg-brand-navy px-8 py-8 flex flex-col justify-center relative overflow-hidden">
@@ -218,9 +218,9 @@ interface OverallProgressProps {
 function OverallProgress({ studentData, completedCount, totalCount, loading }: OverallProgressProps) {
   const masteryPct =
     studentData?.accuracy_rate != null
-      ? Math.round(studentData.accuracy_rate * 100)
+      ? Math.round(studentData.accuracy_rate)
       : totalCount > 0
-      ? Math.round((completedCount / totalCount) * 100)
+      ? Math.round((completedCount / totalCount))
       : 0;
 
   const progressValue = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -319,9 +319,7 @@ function AssignedQuizzes({ quizzes, loading, totalCount }: AssignedQuizzesProps)
               key={quiz.id}
               className="rounded-2xl border border-border overflow-hidden flex flex-col"
               style={{
-                background: quiz.coverGradient
-                  ? `linear-gradient(to left, ${quiz.coverGradient.replace(/^linear-gradient\([^,]+,\s*/, "").replace(/\)$/, "")})`
-                  : "linear-gradient(to left, #0f172a, #1e293b)", // Clean dark-mode fallback (Slate 900 to 800)
+                background: quiz.coverGradient ?? "linear-gradient(to left, #0f172a, #1e293b)",
               }}
 >
               {/* Card header */}
@@ -603,6 +601,7 @@ function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: Exp
                         : `${theme.badge} hover:opacity-80`
                     }`}
                   >
+                    {isEnrolling ? "…" : subject.isEnrolled ? "Enrolled" : "Enroll"}
                   </button>
                 </div>
               </div>
@@ -632,7 +631,7 @@ function Footer() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function StudentDashboard() {
-  const supabase = createClient();
+  const { profile } = useProfile();
 
   const [studentData, setStudentData] = useState<StudentData | null>(null);
   const [assignedQuizzes, setAssignedQuizzes] = useState<AssignedQuiz[]>([]);
@@ -652,17 +651,14 @@ export default function StudentDashboard() {
     let cancelled = false;
 
     async function fetchAll() {
-      try {
-        // 1. Auth
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError) console.error("Auth error:", authError.message);
-        if (!user || cancelled) return;
+      if (!profile?.id) return;
 
+      try {
         // 2. Profile + student record in parallel
         const { data: studentResult, error: studentError} = await supabase
           .from("students")
-          .select("id, user_id, top_percentile, overall_percentile, accuracy_rate, top_subject")
-          .eq("user_id", user.id)
+          .select("top_percentile, overall_percentile, accuracy_rate, top_subject")
+          .eq("user_id", profile?.id)
           .maybeSingle();
 
         if (cancelled) return;
@@ -684,7 +680,7 @@ export default function StudentDashboard() {
           const enrolledResult = await supabase
             .from("subject_affiliations")
             .select("subject_id")
-            .eq("student_id", studentResult.id);
+            .eq("student_id", profile?.id);
 
           if (cancelled) return;
           if (enrolledResult.error) console.error("Enrollments fetch error:", enrolledResult.error.message);
@@ -708,7 +704,7 @@ export default function StudentDashboard() {
         let totalAttempts = 0;
 
         if (studentResult) {
-          const [affiliationsResult, attemptsCountResult, scoresResult] = await Promise.all([
+          const [affiliationsResult, attemptsResult, scoresResult] = await Promise.all([
             // Primary source for assigned quizzes: quiz_affiliations joined to quizzes
             supabase
               .from("quiz_affiliations")
@@ -733,36 +729,32 @@ export default function StudentDashboard() {
                   status
                 )
               `)
-              .eq("student_id", studentResult.id)
+              .eq("student_id", profile?.id)
               .order("assigned_at", { ascending: false }),
             // Keep attempt counts for the Overall Progress widget
             supabase
               .from("quiz_attempts")
               .select("id, status")
-              .eq("student_id", studentResult.id),
-            supabase
-              .from("student_subject_scores")
-              .select(`
-                id,
-                score,
-                recorded_at,
-                subjects (
-                  name,
-                  code
-                )
-              `)
-              .eq("student_id", studentResult.id)
-              .order("recorded_at", { ascending: false })
+              .eq("student_id", profile?.id)
+              .order("submitted_at", { ascending: false })
               .limit(10),
+            // Subject scores — quiz_attempts → quizzes → subjects
+            supabase
+              .from("quiz_attempts")
+              .select("id, score, quizzes(subject_id, subjects(id, name))")
+              .eq("student_id", profile?.id)
+              .eq("status", "submitted")
+              .not("score", "is", null)
+              .order("submitted_at", { ascending: false })
           ]);
 
           if (cancelled) return;
           if (affiliationsResult.error) console.error("Affiliations fetch error:", affiliationsResult.error.message);
-          if (attemptsCountResult.error) console.error("Attempts count error:", attemptsCountResult.error.message);
+          if (attemptsResult.error) console.error("Attempts count error:", attemptsResult.error.message);
           if (scoresResult.error) console.error("Scores fetch error:", scoresResult.error.message);
 
           // Overall progress counts come from actual quiz_attempts
-          const attemptRows = attemptsCountResult.data ?? [];
+          const attemptRows = attemptsResult.data ?? [];
           completed = attemptRows.filter((a) => a.status === "submitted").length;
           totalAttempts = attemptRows.length;
 
@@ -806,8 +798,10 @@ export default function StudentDashboard() {
           const typedScores = ((scoresResult.data ?? []) as unknown as SubjectScore[]);
           const seenSubjectsMap = new Map<string, SubjectScore>();
           for (const item of typedScores) {
-            if (!seenSubjectsMap.has(item.subjects.code)) {
-              seenSubjectsMap.set(item.subjects.code, item);
+            if (!item.quizzes?.subjects) continue;
+            const subjectId = item.quizzes.subjects.id;
+            if (!seenSubjectsMap.has(subjectId)) {
+              seenSubjectsMap.set(subjectId, item);
             }
           }
           mappedScores = Array.from(seenSubjectsMap.values())
@@ -816,7 +810,7 @@ export default function StudentDashboard() {
               const { icon, iconBg } = getScoreIcon(item.score);
               return {
                 id: item.id,
-                subject: item.subjects.name.toUpperCase(),
+                subject: item.quizzes.subjects.name.toUpperCase(),
                 score: `Score: ${Math.round(item.score)}/100`,
                 icon,
                 iconBg,
@@ -848,14 +842,13 @@ export default function StudentDashboard() {
     fetchAll();
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profile]);
 
   const overallLoading = loading;
 
   // ── Enroll / unenroll handler ─────────────────────────────────────────────
   // subject_affiliations.student_id references students(id), not auth.users(id)
-  const studentId = studentData?.id;
+  const studentId = profile?.id;
 
   const handleToggleEnroll = useCallback(async (subjectId: string, enrolled: boolean) => {
     if (!studentId) return;
@@ -886,7 +879,7 @@ export default function StudentDashboard() {
     } finally {
       setEnrollingId(null);
     }
-  }, [studentId, supabase]);
+  }, [studentId]);
 
   return (
     <div className="flex min-h-screen bg-surface flex-1 flex-col">

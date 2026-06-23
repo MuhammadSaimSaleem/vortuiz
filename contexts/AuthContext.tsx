@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client'; 
+import { supabase } from '@/lib/supabase/client'; 
 import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -20,7 +20,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
   // Move the function definition inside the effect
@@ -70,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   return () => subscription.unsubscribe();
-}, [supabase.auth, supabase]); // Add supabase.auth here just to satisfy the linter completely
+}, []);
 
   return (
     <AuthContext.Provider value={{ user, role, loading }}>

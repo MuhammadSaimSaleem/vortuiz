@@ -23,6 +23,7 @@ import {
   Lock,
 } from "lucide-react";
 import { toPascalCase } from "@/lib/utils";
+import { useProfile } from "@/contexts/ProfileContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Subject {
@@ -129,7 +130,9 @@ function PageSkeleton() {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default function QuizDetailPage() {
+export default function QuizDetailPage() { 
+  const { profile } = useProfile();
+
   const params = useParams<{ id: string }>();
   const quizId = params.id;
   const router = useRouter();
@@ -150,28 +153,28 @@ export default function QuizDetailPage() {
           .select(`
             id,
             name,
-            subtitle,
+            topics,
             description,
             difficulty,
-            duration_minutes,
-            passing_score,
-            created_at,
+            time_limit,
+            total_marks,
+            passing_marks,
+            participant_count,
+            question_count,
             status,
             closed_at,
             cover_gradient,
-            topics,
             subject_id,
             subjects (
               id,
               name,
               slug,
-              description,
               icon_name,
               color_theme
             )
           `)
-          .eq("id", quizId)
-          .maybeSingle();
+          .eq("creator_id", profile?.id)
+          .order("created_at", { ascending: false });
 
         if (quizError) throw quizError;
         if (!quizData) {

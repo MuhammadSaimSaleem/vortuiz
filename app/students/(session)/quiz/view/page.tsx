@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +36,8 @@ import {
   Users,
   Shield,
 } from "lucide-react";
+import { toPascalCase } from "@/lib/utils";
+import { useProfile } from "@/contexts/ProfileContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Subject {
@@ -83,14 +85,6 @@ const COLOR_THEMES: Record<
 
 function getTheme(colorTheme: string | null) {
   return COLOR_THEMES[colorTheme ?? "slate"] ?? COLOR_THEMES.slate;
-}
-
-// ─── Subject icon helpers ─────────────────────────────────────────────────────
-function toPascalCase(str: string): string {
-  return str
-    .replace(/[-_]+/g, " ")
-    .replace(/(?:^|\s)(.)/g, (_, c: string) => c.toUpperCase())
-    .replace(/\s/g, "");
 }
 
 function isValidIcon(
@@ -390,6 +384,8 @@ function StatChipSkeleton() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuizPage() {
+  const { profile } = useProfile();
+
   const [quizzes,    setQuizzes]    = useState<Quiz[]>([]);
   const [subjects,   setSubjects]   = useState<Subject[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -401,8 +397,6 @@ export default function QuizPage() {
   const [filterDiff, setFilterDiff] = useState("all");
   const [filterSubj, setFilterSubj] = useState("all");
   const [filterStat, setFilterStat] = useState("all");
-
-  const supabase = createClient();
 
   const handleRetry = useCallback(() => {
     setFetchError(null);
@@ -417,26 +411,7 @@ export default function QuizPage() {
       setFetchError(null);
 
       try {
-        // 1. Resolve current user → student record
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          if (!cancelled) {
-            setQuizzes([]);
-            setSubjects([]);
-          }
-          return;
-        }
-
-        const { data: studentData } = await supabase
-          .from("students")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!studentData) {
+        if (!profile?.id) {
           if (!cancelled) {
             setQuizzes([]);
             setSubjects([]);
@@ -474,7 +449,7 @@ export default function QuizPage() {
               )
             )
           `)
-          .eq("student_id", studentData.id)
+          .eq("student_id", profile?.id)
           .order("assigned_at", { ascending: false });
 
         if (affiliationsError) throw affiliationsError;
@@ -524,7 +499,7 @@ export default function QuizPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, retryCount]);
+  }, [profile?.id, retryCount]);
 
   // ── Derived / memoised values ─────────────────────────────────────────────
   const filtered = useMemo(() => {

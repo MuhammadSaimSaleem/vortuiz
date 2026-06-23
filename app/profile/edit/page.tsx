@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { AvatarPicker } from "@/components/ui/AvatarPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -207,7 +207,6 @@ function SectionHeader({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function EditProfile() {
-  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -300,7 +299,7 @@ export default function EditProfile() {
     }
 
     fetchProfile();
-  }, [supabase, showToast]);
+  }, [showToast]);
 
   // ── Handle profile field change ───────────────────────────────────────────
   function handleChange(field: keyof ProfileForm, value: string) {

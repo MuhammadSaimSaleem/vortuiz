@@ -49,8 +49,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { toTitleCase } from "@/lib/utils";
+import { supabase } from "@/lib/supabase/client";
 import Image from "next/image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -313,7 +312,6 @@ function StrengthBar({ password }: { password: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Profile() {
-  const supabase = createClient();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -422,7 +420,7 @@ export default function Profile() {
     }
 
     fetchProfile();
-  }, [supabase]);
+  }, []);
 
   // ── Save preferences helper ────────────────────────────────────────────────
   async function savePreferences(patch: Partial<Profile>) {
@@ -589,7 +587,7 @@ export default function Profile() {
     });
 
     if (error) {
-      showToast(`Failed to connect ${toTitleCase(provider)}: ${error.message}`, "error");
+      showToast(`Failed to connect ${provider}: ${error.message}`, "error");
       setConnectLoading(null);
       return;
     }
@@ -627,7 +625,7 @@ export default function Profile() {
       setProfile((prev) =>
         prev ? { ...prev, [field]: false } : prev
       );
-      showToast(`${toTitleCase(provider)} disconnected.`);
+      showToast(`${provider} disconnected.`);
     }
 
     setConnectLoading(null);
@@ -653,7 +651,7 @@ export default function Profile() {
 
       if (!error) {
         setProfile((prev) => (prev ? { ...prev, [field]: true } : prev));
-        showToast(`${toTitleCase(connected)} connected successfully.`);
+        showToast(`${connected} connected successfully.`);
       } else {
         showToast(`Failed to save connection: ${error.message}`, "error");
       }
@@ -723,7 +721,7 @@ export default function Profile() {
               {profile?.full_name || "N/A"}
             </h1>
             <p className="text-sm text-brand-subtitle mt-0.5">
-              {toTitleCase(profile?.role) || "N/A"}
+              {(profile?.role) || "N/A"}
             </p>
           </div>
 
@@ -778,7 +776,7 @@ export default function Profile() {
                 <p className="text-sm font-semibold text-brand-dark">Two-Factor Auth</p>
                 <p className="text-xs text-brand-subtitle mt-0.5">
                   {twoFactor
-                    ? `Enabled via ${toTitleCase(profile?.two_factor_method ?? "email")}`
+                    ? `Enabled via ${(profile?.two_factor_method ?? "email")}`
                     : "Secure your account with SMS/Email"}
                 </p>
               </div>
@@ -1201,10 +1199,10 @@ export default function Profile() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-brand-navy" />
-              Connect {toTitleCase(connectOpen ?? "")}
+              Connect {(connectOpen ?? "")}
             </DialogTitle>
             <DialogDescription>
-              You&apos;ll be redirected to {toTitleCase(connectOpen ?? "")} to authorise the connection.
+              You&apos;ll be redirected to {(connectOpen ?? "")} to authorise the connection.
               Your Vortuiz account stays fully functional.
             </DialogDescription>
           </DialogHeader>
@@ -1216,7 +1214,7 @@ export default function Profile() {
               onClick={() => { if (connectOpen) handleConnect(connectOpen); setConnectOpen(null); }}
               className="bg-brand-navy hover:bg-brand-blue text-white rounded-xl"
             >
-              Continue to {toTitleCase(connectOpen ?? "")}
+              Continue to {(connectOpen ?? "")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1228,10 +1226,10 @@ export default function Profile() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-500">
               <XCircle className="h-5 w-5" />
-              Disconnect {toTitleCase(disconnectOpen ?? "")}
+              Disconnect {(disconnectOpen ?? "")}
             </DialogTitle>
             <DialogDescription>
-              You&apos;ll no longer be able to sign in with {toTitleCase(disconnectOpen ?? "")}. Make
+              You&apos;ll no longer be able to sign in with {(disconnectOpen ?? "")}. Make
               sure you have a password set before disconnecting your only sign-in method.
             </DialogDescription>
           </DialogHeader>

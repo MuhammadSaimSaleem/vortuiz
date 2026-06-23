@@ -19,7 +19,8 @@ import {
 import NotificationDropdown from "./NotificationModal";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client"; 
+import { supabase } from "@/lib/supabase/client"; 
+import { useRouter } from "next/navigation";
 
 // Define the type according to your PostgreSQL schema
 interface Profile {
@@ -35,8 +36,7 @@ export default function TopBar() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize your Supabase client
-  const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -72,6 +72,17 @@ export default function TopBar() {
   // Fallbacks if data is loading or fields are null
   const displayName = profile?.full_name || "User";
   const initials = profile?.avatar_initials || "U";
+
+  const handleLogOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error("Error logging out:", error.message);
+    } else {
+      router.replace("/auth");
+      router.refresh();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-white px-6 py-4">
@@ -135,7 +146,7 @@ export default function TopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               className="text-red-500 cursor-pointer"
-              onClick={async () => await supabase.auth.signOut()}
+              onClick={handleLogOut}
             >
               Logout
             </DropdownMenuItem>

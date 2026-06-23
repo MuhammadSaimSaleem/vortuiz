@@ -12,7 +12,7 @@ import {
   Collapsible,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
-import { connectGoogle, createClient } from "@/lib/supabase/client";
+import { connectGoogle, supabase } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -180,7 +180,6 @@ export default function AuthForm() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handlePrimaryAction = async () => {
-    const supabase = createClient();
 
     setServerError(null);
     setSuccessMessage(null);
@@ -260,7 +259,6 @@ export default function AuthForm() {
     }
 
     try {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const isGoogleUser = user?.app_metadata?.provider === "google";
 

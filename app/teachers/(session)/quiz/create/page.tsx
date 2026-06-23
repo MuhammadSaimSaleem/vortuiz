@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,6 @@ import {
   AlignLeft,
   ArrowLeft,
   BarChart2,
-  BookOpen,
   CheckCheck,
   CheckCircle2,
   CheckSquare,
@@ -49,23 +48,14 @@ import {
   ChevronUp,
   Circle,
   Clock,
-  Code2,
   Copy,
-  Cpu,
-  FlaskConical,
-  Globe,
   GripVertical,
-  History,
-  Languages,
   LayoutList,
   List,
   MoreHorizontal,
-  Music,
-  Palette,
   Plus,
   Search,
   Settings,
-  Sigma,
   Sparkles,
   Star,
   Target,
@@ -74,22 +64,16 @@ import {
   Upload,
   AlertCircle,
   X,
+  CircleCheckBig,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
+import { useProfile } from "@/contexts/ProfileContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Quiz, Subject } from "@/lib/data";
+import { useQuery } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type QuestionType = "MULTIPLE CHOICE" | "TRUE / FALSE" | "SHORT ANSWER" | "CHECKBOX";
-type AppStep = "subject" | "builder";
-
-interface Subject {
-  id: string;
-  label: string;
-  department: string;
-  icon: React.ReactNode;
-  bg: string;
-  iconColor: string;
-  accent: string;
-  description: string;
-}
+type QuestionType = "MULTIPLE CHOICE" | "TRUE / FALSE" | "SHORT ANSWER";
 
 interface Option {
   id: string;
@@ -102,28 +86,56 @@ interface Question {
   number: number;
   text: string;
   type: QuestionType;
-  points: number;
-  options: Option[];
+  marks: number;
   required: boolean;
   collapsed: boolean;
+  options: Option[];
+}
+
+// ─── color_theme → Tailwind palette map ──────────────────────────────────────
+const COLOR_THEME_MAP: Record<string, { bg: string; iconColor: string; accent: string }> = {
+  slate:   { bg: "bg-slate-100",   iconColor: "text-slate-600",   accent: "border-slate-400 bg-slate-50"   },
+  blue:    { bg: "bg-blue-100",    iconColor: "text-blue-600",    accent: "border-blue-400 bg-blue-50"     },
+  indigo:  { bg: "bg-indigo-100",  iconColor: "text-indigo-600",  accent: "border-indigo-400 bg-indigo-50" },
+  purple:  { bg: "bg-purple-100",  iconColor: "text-purple-600",  accent: "border-purple-400 bg-purple-50" },
+  pink:    { bg: "bg-pink-100",    iconColor: "text-pink-600",    accent: "border-pink-400 bg-pink-50"     },
+  rose:    { bg: "bg-rose-100",    iconColor: "text-rose-600",    accent: "border-rose-400 bg-rose-50"     },
+  orange:  { bg: "bg-orange-100",  iconColor: "text-orange-600",  accent: "border-orange-400 bg-orange-50" },
+  amber:   { bg: "bg-amber-100",   iconColor: "text-amber-600",   accent: "border-amber-400 bg-amber-50"   },
+  yellow:  { bg: "bg-yellow-100",  iconColor: "text-yellow-600",  accent: "border-yellow-400 bg-yellow-50" },
+  lime:    { bg: "bg-lime-100",    iconColor: "text-lime-600",    accent: "border-lime-400 bg-lime-50"     },
+  green:   { bg: "bg-green-100",   iconColor: "text-green-600",   accent: "border-green-400 bg-green-50"   },
+  emerald: { bg: "bg-emerald-100", iconColor: "text-emerald-600", accent: "border-emerald-400 bg-emerald-50"},
+  teal:    { bg: "bg-teal-100",    iconColor: "text-teal-600",    accent: "border-teal-400 bg-teal-50"     },
+  cyan:    { bg: "bg-cyan-100",    iconColor: "text-cyan-600",    accent: "border-cyan-400 bg-cyan-50"     },
+  sky:     { bg: "bg-sky-100",     iconColor: "text-sky-600",     accent: "border-sky-400 bg-sky-50"       },
+  red:     { bg: "bg-red-100",     iconColor: "text-red-600",     accent: "border-red-400 bg-red-50"       },
+};
+
+function getTheme(color_theme: string | null) {
+  return COLOR_THEME_MAP[color_theme ?? "slate"] ?? COLOR_THEME_MAP["slate"];
+}
+
+// ─── icon_name → Lucide icon map ─────────────────────────────────────────────
+function SubjectIcon({ icon_name, className }: { icon_name: string | null; className?: string }) {
+  // We keep a small runtime map to avoid importing every icon
+  const icons: Record<string, React.ReactNode> = {
+    "bar-chart":   <BarChart2    className={className ?? "h-6 w-6"} />,
+    "check-square":<CheckSquare  className={className ?? "h-6 w-6"} />,
+    "align-left":  <AlignLeft    className={className ?? "h-6 w-6"} />,
+    "list":        <List          className={className ?? "h-6 w-6"} />,
+    "star":        <Star          className={className ?? "h-6 w-6"} />,
+    "target":      <Target        className={className ?? "h-6 w-6"} />,
+    "sparkles":    <Sparkles      className={className ?? "h-6 w-6"} />,
+    "settings":    <Settings      className={className ?? "h-6 w-6"} />,
+    "search":      <Search        className={className ?? "h-6 w-6"} />,
+    "clock":       <Clock         className={className ?? "h-6 w-6"} />,
+  };
+  return <>{icons[icon_name ?? ""] ?? <LayoutList className={className ?? "h-6 w-6"} />}</>;
 }
 
 type ToastKind = "success" | "error" | "info";
 interface Toast { id: string; message: string; kind: ToastKind; }
-
-// ─── Subject catalogue ────────────────────────────────────────────────────────
-const subjects: Subject[] = [
-  { id: "science",     label: "Science",      department: "Science Department",      icon: <FlaskConical className="h-8 w-8" />, bg: "bg-blue-50",    iconColor: "text-blue-500",   accent: "border-blue-200 hover:border-blue-400",   description: "Biology, Chemistry, Physics & Earth Science" },
-  { id: "mathematics", label: "Mathematics",  department: "Mathematics Department",  icon: <Sigma        className="h-8 w-8" />, bg: "bg-orange-50",  iconColor: "text-orange-500", accent: "border-orange-200 hover:border-orange-400", description: "Algebra, Calculus, Geometry & Statistics" },
-  { id: "languages",   label: "Languages",    department: "Languages Department",    icon: <Languages    className="h-8 w-8" />, bg: "bg-emerald-50", iconColor: "text-emerald-600",accent: "border-emerald-200 hover:border-emerald-400",description: "English, Literature, ESL & World Languages" },
-  { id: "arts",        label: "Arts",         department: "Arts Department",         icon: <Palette      className="h-8 w-8" />, bg: "bg-purple-50",  iconColor: "text-purple-500", accent: "border-purple-200 hover:border-purple-400", description: "Visual Arts, Drama, Music & Media" },
-  { id: "history",     label: "History",      department: "History Department",      icon: <History      className="h-8 w-8" />, bg: "bg-rose-50",    iconColor: "text-rose-500",   accent: "border-rose-200 hover:border-rose-400",    description: "World History, Civics, Geography & Politics" },
-  { id: "technology",  label: "Technology",   department: "Technology Department",   icon: <Cpu          className="h-8 w-8" />, bg: "bg-cyan-50",    iconColor: "text-cyan-600",   accent: "border-cyan-200 hover:border-cyan-400",    description: "Computer Science, ICT & Digital Literacy" },
-  { id: "music",       label: "Music",        department: "Music Department",        icon: <Music        className="h-8 w-8" />, bg: "bg-pink-50",    iconColor: "text-pink-500",   accent: "border-pink-200 hover:border-pink-400",    description: "Theory, Composition, Instruments & Ensemble" },
-  { id: "geography",   label: "Geography",    department: "Geography Department",    icon: <Globe        className="h-8 w-8" />, bg: "bg-teal-50",    iconColor: "text-teal-600",   accent: "border-teal-200 hover:border-teal-400",    description: "Physical, Human & Environmental Geography" },
-  { id: "computing",   label: "Computing",    department: "Computing Department",    icon: <Code2        className="h-8 w-8" />, bg: "bg-violet-50",  iconColor: "text-violet-600", accent: "border-violet-200 hover:border-violet-400", description: "Programming, Algorithms, Data & Networks" },
-  { id: "literature",  label: "Literature",   department: "Literature Department",   icon: <BookOpen     className="h-8 w-8" />, bg: "bg-amber-50",   iconColor: "text-amber-600",  accent: "border-amber-200 hover:border-amber-400",  description: "Fiction, Poetry, Drama & Critical Analysis" },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -144,10 +156,14 @@ function renumber(qs: Question[]): Question[] {
 
 function getDifficulty(estimatedMins: number, timeLimit: number): { label: string; cls: string } {
   const usage = timeLimit > 0 ? (estimatedMins / timeLimit) * 100 : 0;
-  if (usage === 0 || usage <= 40) return { label: "Easy",        cls: "text-emerald-500" };
-  if (usage <= 70)                 return { label: "Intermediate", cls: "text-orange-500" };
-  if (usage <= 100)                return { label: "Hard",         cls: "text-red-500"    };
-  return                                  { label: "Impossible",   cls: "text-purple-600" };
+  if (usage === 0 || usage <= 40) 
+    return { label: "Easy", cls: "text-emerald-500" };
+  if (usage <= 70) 
+    return { label: "Intermediate", cls: "text-orange-500" };
+  if (usage <= 100) 
+    return { label: "Hard", cls: "text-red-500"    };
+  else
+    return { label: "Impossible", cls: "text-purple-600" };
 }
 
 // ─── qTypes config ────────────────────────────────────────────────────────────
@@ -155,7 +171,6 @@ const qTypes: { label: QuestionType; icon: React.ReactNode; color: string }[] = 
   { label: "MULTIPLE CHOICE", icon: <LayoutList className="h-5 w-5" />, color: "text-brand-blue bg-brand-light" },
   { label: "TRUE / FALSE",    icon: <ToggleLeft  className="h-5 w-5" />, color: "text-orange-500 bg-orange-50"  },
   { label: "SHORT ANSWER",    icon: <AlignLeft   className="h-5 w-5" />, color: "text-emerald-600 bg-emerald-50"},
-  { label: "CHECKBOX",        icon: <CheckSquare className="h-5 w-5" />, color: "text-purple-500 bg-purple-50"  },
 ];
 
 // ─── Toast system ─────────────────────────────────────────────────────────────
@@ -195,17 +210,16 @@ function useToasts() {
 
 // ─── SubjectSelectionScreen ───────────────────────────────────────────────────
 function SubjectSelectionScreen({
-  onSelect,
+  onSelect, subjectsData, search, onSearchChange, isLoading, profileReady
 }: {
   onSelect: (subject: Subject) => void;
+  subjectsData: Subject[];
+  search: string;
+  onSearchChange: (v: string) => void;
+  isLoading: boolean;
+  profileReady: boolean;
 }) {
-  const [search, setSearch] = useState("");
   const [hovered, setHovered] = useState<string | null>(null);
-
-  const filtered = subjects.filter(s =>
-    s.label.toLowerCase().includes(search.toLowerCase()) ||
-    s.description.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="flex-1 max-w-300 mx-auto w-full px-6 py-10">
@@ -227,68 +241,88 @@ function SubjectSelectionScreen({
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-subtitle" />
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => onSearchChange(e.target.value)}
           placeholder="Search subjects…"
           className="w-full h-11 pl-11 pr-4 rounded-xl border border-border bg-white text-sm text-slate-700 placeholder:text-brand-subtitle focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
         />
       </div>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
+      {/* Conditional Content: Loading vs Empty vs Grid Data */}
+      {(!profileReady || isLoading) ? (
+        /* Subject Grid Skeleton */
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex flex-col items-center rounded-2xl border-2 border-slate-100 bg-white p-5"
+            >
+              <Skeleton className="w-full aspect-square rounded-xl mb-4" />
+              <Skeleton className="h-4 w-[70%] mb-2" />
+              <Skeleton className="h-3 w-[40%]" />
+            </div>
+          ))}
+        </div>
+      ) : subjectsData.length === 0 ? (
+        /* Empty State */
         <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
           <p className="text-sm font-medium text-brand-subtitle">No subjects match &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
+        /* Actual Subject Grid Data */
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {filtered.map(subject => (
-            <button
-              key={subject.id}
-              onClick={() => onSelect(subject)}
-              onMouseEnter={() => setHovered(subject.id)}
-              onMouseLeave={() => setHovered(null)}
-              className={`relative flex flex-col items-center rounded-2xl border-2 bg-white p-5 transition-all duration-200 group
-                ${hovered === subject.id ? subject.accent.split(" ")[1] + " shadow-md scale-[1.03]" : "border-border"}
-                focus:outline-none focus:ring-2 focus:ring-brand-blue`}
-            >
-              {/* Icon tile */}
-              <div className={`w-full aspect-square rounded-xl ${subject.bg} flex items-center justify-center mb-4 transition-transform duration-200 ${hovered === subject.id ? "scale-105" : ""}`}>
-                <span className={subject.iconColor}>{subject.icon}</span>
-              </div>
-
-              {/* Label */}
-              <p className={`text-sm font-bold text-center transition-colors ${hovered === subject.id ? "text-brand-navy" : "text-slate-600"}`}>
-                {subject.label}
-              </p>
-
-              {/* Hover arrow */}
-              <div className={`absolute top-3 right-3 transition-all duration-200 ${hovered === subject.id ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}>
-                <ChevronRight className="h-4 w-4 text-brand-blue" />
-              </div>
-            </button>
-          ))}
+          {subjectsData.map(subject => {
+            const { bg, iconColor, accent } = getTheme(subject.color_theme);
+            const isHovered = hovered === subject.id;
+            return (
+              <button
+                key={subject.id}
+                onClick={() => onSelect(subject)}
+                onMouseEnter={() => setHovered(subject.id)}
+                onMouseLeave={() => setHovered(null)}
+                className={`relative flex flex-col items-center rounded-2xl border-2 bg-white p-5 transition-all duration-200 group
+                  ${isHovered ? accent + " shadow-md scale-[1.03]" : "border-border"}
+                  focus:outline-none focus:ring-2 focus:ring-brand-blue`}
+              >
+                <div className={`w-full aspect-square rounded-xl ${bg} flex items-center justify-center mb-4 transition-transform duration-200 ${isHovered ? "scale-105" : ""}`}>
+                  <span className={iconColor}>
+                    <SubjectIcon icon_name={subject.icon_name} className="h-6 w-6" />
+                  </span>
+                </div>
+                <p className={`text-sm font-bold text-center transition-colors ${isHovered ? "text-brand-navy" : "text-slate-600"}`}>
+                  {subject.name}
+                </p>
+                <p className="text-[10px] font-mono text-brand-subtitle mt-0.5 uppercase tracking-wider">
+                  {subject.code}
+                </p>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Footer hint */}
-      <p className="text-center text-xs text-slate-300 mt-10">
-        {subjects.length} subjects available · You can change this later in Quiz Settings
-      </p>
+      <div className="text-center text-xs text-slate-300 mt-10">
+        {(!profileReady || isLoading) ? (
+          <Skeleton className="h-3 w-70 mx-auto" />
+        ) : (
+          `${subjectsData?.length ?? 0} subjects available · You can change this later in Quiz Settings`
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── QuizStatsPanel ───────────────────────────────────────────────────────────
-function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
+function QuizStatsPanel({ questions, onGenerate, estimatedMins, timeLimit, totalMarks }: {
   questions: Question[];
   onGenerate: () => void;
+  estimatedMins: number;
   timeLimit: number;
+  totalMarks: number;
 }) {
-  const totalPoints   = questions.reduce((a, q) => a + q.points, 0);
-  const estimatedMins = Math.ceil(questions.length * 1.5);
   const mcCount       = questions.filter(q => q.type === "MULTIPLE CHOICE").length;
   const tfCount       = questions.filter(q => q.type === "TRUE / FALSE").length;
   const saCount       = questions.filter(q => q.type === "SHORT ANSWER").length;
-  const cbCount       = questions.filter(q => q.type === "CHECKBOX").length;
   const total         = questions.length || 1;
 
   const { label: diffLabel, cls: diffCls } = getDifficulty(estimatedMins, timeLimit);
@@ -301,7 +335,7 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
         <div className="space-y-3">
           {[
             { label: "Total Questions", value: String(questions.length), icon: <List   className="h-4 w-4 text-brand-blue"  /> },
-            { label: "Total Points",    value: String(totalPoints),      icon: <Star   className="h-4 w-4 text-amber-500"  /> },
+            { label: "Total Marks",    value: String(totalMarks),      icon: <Star   className="h-4 w-4 text-amber-500"  /> },
             { label: "Est. Duration",   value: `${estimatedMins} min`,   icon: <Clock  className="h-4 w-4 text-emerald-500"/> },
             { label: "Difficulty",      value: diffLabel,                icon: <Target className="h-4 w-4 text-orange-500" />, valueClass: diffCls },
           ].map(({ label, value, icon, valueClass }) => (
@@ -340,7 +374,6 @@ function QuizStatsPanel({ questions, onGenerate, timeLimit }: {
             { label: "Multiple Choice", count: mcCount, color: "bg-brand-navy" },
             { label: "True / False",    count: tfCount, color: "bg-orange-400" },
             { label: "Short Answer",    count: saCount, color: "bg-emerald-400"},
-            { label: "Checkbox",        count: cbCount, color: "bg-purple-400" },
           ].map(({ label, count, color }) => (
             <div key={label}>
               <div className="flex justify-between text-xs mb-1">
@@ -396,7 +429,7 @@ function QuestionCard({
   question, isFirst, isLast,
   onToggleCorrect, onAddOption, onDeleteOption,
   onUpdateOptionText, onUpdateQuestionText,
-  onUpdatePoints, onToggleRequired,
+  onUpdateMarks, onToggleRequired,
   onDone, onDelete, onDuplicate,
   onMoveUp, onMoveDown, onCollapse, onChangeType,
 }: {
@@ -406,7 +439,7 @@ function QuestionCard({
   onDeleteOption:      (qId: string, oId: string) => void;
   onUpdateOptionText:  (qId: string, oId: string, text: string) => void;
   onUpdateQuestionText:(qId: string, text: string) => void;
-  onUpdatePoints:      (qId: string, pts: number) => void;
+  onUpdateMarks:      (qId: string, pts: number) => void;
   onToggleRequired:    (qId: string) => void;
   onDone:              (qId: string) => void;
   onDelete:            (qId: string) => void;
@@ -421,78 +454,79 @@ function QuestionCard({
   return (
     <div className={`rounded-2xl border-2 bg-white transition-colors ${question.collapsed ? "border-border" : "border-brand-blue"}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-3">
+      <div className="flex flex-col w-full items-start justify-between px-6 pt-5 pb-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-widest text-brand-blue mb-1">
             Question {String(question.number).padStart(2, "0")}
           </p>
-          {question.collapsed ? (
-            <p className="text-sm font-semibold text-brand-navy truncate">{question.text || "Untitled question"}</p>
-          ) : (
-            <Input value={question.text}
-              onChange={e => onUpdateQuestionText(question.id, e.target.value)}
-              placeholder="Type your question here…"
-              className="h-9 text-sm font-semibold border-border focus-visible:ring-brand-blue rounded-xl" />
-          )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-4">
-          <Select value={question.type} onValueChange={v => onChangeType(question.id, v as QuestionType)}>
-            <SelectTrigger className="h-7 text-[11px] font-bold border-0 bg-brand-navy text-white rounded-full px-3 focus:ring-0 w-auto gap-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {qTypes.map(t => <SelectItem key={t.label} value={t.label} className="text-xs">{t.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-slate-500"
-                disabled={isFirst} onClick={() => onMoveUp(question.id)}>
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move up</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-slate-500"
-                disabled={isLast} onClick={() => onMoveDown(question.id)}>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move down</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="default" size="icon" className="h-7 w-7 bg-slate-100 text-brand-navy hover:text-slate-500"
-                onClick={() => onCollapse(question.id)}>
-                {question.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-brand-navy text-white border-none text-xs">
-              {question.collapsed ? "Expand" : "Collapse"}
-            </TooltipContent>
-          </Tooltip>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-brand-subtitle">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="gap-2" onClick={() => onDuplicate(question.id)}>
-                <Copy className="h-3.5 w-3.5" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-red-500" onClick={() => onDelete(question.id)}>
-                <Trash2 className="h-3.5 w-3.5" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex items-center gap-3 w-full">
+          <div className="flex-1 min-w-0">
+            {question.collapsed ? (
+              <p className="text-sm font-semibold text-brand-navy truncate">{question.text || "Untitled question"}</p>
+            ) : (
+              <Input value={question.text}
+                onChange={e => onUpdateQuestionText(question.id, e.target.value)}
+                placeholder="Type your question here…"
+                className="h-9 text-sm font-semibold border-border focus-visible:ring-brand-blue rounded-xl" />
+            )}
+          </div>
+          <div className="flex items-center shrink-0">
+            <Select value={question.type} onValueChange={v => onChangeType(question.id, v as QuestionType)}>
+              <SelectTrigger className="h-7 text-[11px] font-bold border-0 bg-brand-navy text-white rounded-full px-3 focus:ring-0 w-auto gap-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {qTypes.map(t => <SelectItem key={t.label} value={t.label} className="text-xs">{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 ml-2 text-slate-700 hover:text-slate-900"
+                  disabled={isFirst} onClick={() => onMoveUp(question.id)}>
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move up</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 mr-2 text-slate-700 hover:text-slate-900"
+                  disabled={isLast} onClick={() => onMoveDown(question.id)}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-brand-navy text-white border-none text-xs">Move down</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="default" size="icon" className="h-7 w-7 bg-slate-100 text-brand-navy hover:text-white"
+                  onClick={() => onCollapse(question.id)}>
+                  {question.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-brand-navy text-white border-none text-xs">
+                {question.collapsed ? "Expand" : "Collapse"}
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-brand-subtitle">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="gap-2" onClick={() => onDuplicate(question.id)}>
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 text-red-500" onClick={() => onDelete(question.id)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -501,10 +535,10 @@ function QuestionCard({
         <div className="px-6 pb-6">
           <div className="flex items-center gap-2 mb-4">
             <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-            <input type="number" min={1} max={100} value={question.points}
-              onChange={e => onUpdatePoints(question.id, Math.max(1, parseInt(e.target.value) || 1))}
+            <input type="number" min={1} max={100} value={question.marks}
+              onChange={e => onUpdateMarks(question.id, Math.max(1, parseInt(e.target.value) || 1))}
               className="w-14 text-xs font-bold text-brand-navy border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-blue" />
-            <span className="text-xs text-brand-subtitle">Points</span>
+            <span className="text-xs text-brand-subtitle">Marks</span>
           </div>
 
           {isShortAnswer ? (
@@ -604,14 +638,23 @@ function PublishDialog({ open, onConfirm, onCancel, title }: { open: boolean; on
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuizBuilderPage() {
-  const [step,           setStep]           = useState<AppStep>("subject");
-  const [selectedSubject,setSelectedSubject]= useState<Subject | null>(null);
+  const { profile } = useProfile();
+
+  const [step, setStep] = useState<"subject" | "builder">("subject");
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // Quiz settings
-  const [title,       setTitle]       = useState("");
-  const [description, setDescription] = useState("");
-  const [timeLimit,   setTimeLimit]   = useState(45);
-  const [grading,     setGrading]     = useState("standard");
+  const [Quiz, setQuiz] = useState<Quiz>({
+    name: "",
+    topic: "",
+    desc: "",
+    timeLimit: 30,
+    gradingType: "standard",
+    difficulty: "beginner",
+    totalMarks: 0,
+    passingMarks: 0,
+    questionCount: 0,
+  } as Quiz);
   const [coverImage,  setCoverImage]  = useState<string | null>(null);
 
   // Questions
@@ -620,15 +663,58 @@ export default function QuizBuilderPage() {
   // Dialogs
   const [showClearDialog,   setShowClearDialog]   = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const { toasts, push, dismiss } = useToasts();
   const coverRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState("");
+
+  const estimatedMins = Math.ceil(questions.length * 1.5);
+  const totalMarks = questions.reduce((a, q) => a + q.marks, 0);
+
+  const { 
+    data: subjectsData = [],
+    isLoading,
+    error: subjectsError,
+  } = useQuery({
+    queryKey: ['subjects'], 
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('created_by', profile?.id);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
+    },
+
+    enabled: !!profile?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 4. Handle your error notification side-effect cleanly
+  useEffect(() => {
+    if (subjectsError) {
+      push('Unable to load subjects', 'error');
+    }
+  }, [subjectsError, push]);
+
+  const filteredSubjects = subjectsData.filter(subject => {
+    const query = search.toLowerCase();
+    return (
+      subject.name?.toLowerCase().includes(query) ||
+      subject.code?.toLowerCase().includes(query) ||
+      (subject.description ?? "").toLowerCase().includes(query)
+    );
+  });
 
   // ── Subject selection ──────────────────────────────────────────────────────
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
     setStep("builder");
-    push(`${subject.label} department selected`, "info");
+    push(`${subject.name} selected`, "info");
   };
 
   // ── Quiz settings ──────────────────────────────────────────────────────────
@@ -640,27 +726,103 @@ export default function QuizBuilderPage() {
   };
 
   const handleSaveDraft = () => {
-    if (!title.trim()) { push("Please add a quiz title before saving.", "error"); return; }
+    if (!Quiz.name.trim()) { push("Please add a quiz title before saving.", "error"); return; }
     push("Draft saved successfully!");
   };
 
   const handlePublishClick = () => {
-    if (!title.trim())          { push("Quiz title is required to publish.", "error"); return; }
-    if (questions.length === 0) { push("Add at least one question to publish.", "error"); return; }
-    const noAnswer = questions.find(q => q.type !== "SHORT ANSWER" && !q.options.some(o => o.correct));
-    if (noAnswer) { push(`Question ${noAnswer.number} has no correct answer marked.`, "error"); return; }
+    if (!Quiz.name.trim()) { 
+      push("Quiz title is required to publish.", "error"); 
+      return; }
+    if (questions.length === 0) { 
+      push("Add at least one question to publish.", "error"); 
+      return; }
+    if(Quiz.passingMarks <= Math.ceil(totalMarks * 0.2)) {
+      push("Passing marks must be atleast 20% of total marks.", "error")
+      return; }
+
+    const noAnswer = questions.find(q => q.type !== "SHORT ANSWER" && !q.options.some((o: Option) => o.correct));
+
+    if (noAnswer) { 
+      push(`Question ${noAnswer.number} has no correct answer marked.`, "error"); 
+      return;
+    }
     setShowPublishDialog(true);
   };
 
-  const handlePublishConfirm = () => {
+  const handlePublishConfirm = async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
     setShowPublishDialog(false);
-    push("Quiz published! Share the join code with your students.", "success");
+
+    try {
+      const topicsArray = Quiz.topic
+        ? Quiz.topic.split(",").map(t => t.trim()).filter(Boolean)
+        : [];
+
+      const { label } = getDifficulty(estimatedMins, Quiz.timeLimit);
+
+      if(profile){
+        const insertPayload = {
+          creator_id: profile?.id,
+          subject_id: selectedSubject?.id,
+          name: Quiz.name,
+          topics: topicsArray,
+          description: Quiz.desc,
+          time_limit: Quiz.timeLimit,
+          grading_type: Quiz.gradingType,
+          question_count: questions.length,
+          difficulty: label.toLowerCase(),
+          status: 'published',
+          total_marks: totalMarks,
+          passing_marks: Quiz.passingMarks,
+        };
+      
+        const { data: quizInsert, error: quizError } = await supabase
+          .from('quizzes')
+          .insert(insertPayload)
+          .select()
+          .single();
+
+        if (quizError) throw new Error(`Quiz insert failed: ${quizError.message} (code: ${quizError.code})`);
+
+        const typeMap: Record<QuestionType, string> = {
+          "MULTIPLE CHOICE": "multiple-choice",
+          "TRUE / FALSE":    "true-false",
+          "SHORT ANSWER":    "short-answer",
+        };
+
+        const questionsPayload = questions.map((q, i) => ({
+          quiz_id:     quizInsert.id,
+          question:    q.text,
+          type:        typeMap[q.type],
+          order_index: i,
+          marks:       q.marks,
+          options: q.options.map((o: Option) => o.text),
+          answer:  q.options.find((o: Option) => o.correct)?.text ?? null,
+        }));
+
+        const { error: questionError } = await supabase
+          .from('questions')
+          .insert(questionsPayload);
+
+        if (questionError) throw new Error(`Questions insert failed: ${questionError.message} (code: ${questionError.code})`);
+
+        push("Quiz published! Share the join code with your students.", "success");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      push(`Failed to publish: ${message}`, "error");
+      console.error("[publish] error:", err);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // ── Question handlers ──────────────────────────────────────────────────────
   const handleCreateQuestion = (type: QuestionType) => {
     setQuestions(prev => renumber([...prev, {
-      id: uid(), number: 0, text: "", type, points: 5, required: true, collapsed: false,
+      id: uid(), number: 0, text: "", type, marks: 5, required: true, collapsed: false,
       options: defaultOptions(type),
     }]));
     push(`${type.charAt(0) + type.slice(1).toLowerCase()} question added`, "info");
@@ -716,7 +878,7 @@ export default function QuizBuilderPage() {
   const handleDeleteOption     = (qId: string, oId: string) => setQuestions(prev => prev.map(q => q.id !== qId ? q : { ...q, options: q.options.filter(o => o.id !== oId) }));
   const handleUpdateOptionText = (qId: string, oId: string, text: string) => setQuestions(prev => prev.map(q => q.id !== qId ? q : { ...q, options: q.options.map(o => o.id === oId ? { ...o, text } : o) }));
   const handleUpdateQuestionText = (qId: string, text: string) => setQuestions(prev => prev.map(q => q.id === qId ? { ...q, text } : q));
-  const handleUpdatePoints     = (qId: string, pts: number)    => setQuestions(prev => prev.map(q => q.id === qId ? { ...q, points: pts } : q));
+  const handleUpdateMarks     = (qId: string, pts: number)    => setQuestions(prev => prev.map(q => q.id === qId ? { ...q, marks: pts } : q));
   const handleToggleRequired   = (qId: string)                 => setQuestions(prev => prev.map(q => q.id === qId ? { ...q, required: !q.required } : q));
   const handleChangeType       = (qId: string, type: QuestionType) => setQuestions(prev => prev.map(q => q.id !== qId ? q : { ...q, type, options: defaultOptions(type) }));
 
@@ -724,7 +886,7 @@ export default function QuizBuilderPage() {
     setQuestions(prev => renumber([...prev,
       {
         id: uid(), number: 0, text: "What is the primary function of the cell membrane?",
-        type: "MULTIPLE CHOICE", points: 5, required: true, collapsed: false,
+        type: "MULTIPLE CHOICE", marks: 5, required: true, collapsed: false,
         options: [
           { id: uid(), text: "Producing energy",              correct: false },
           { id: uid(), text: "Controlling what enters/exits", correct: true  },
@@ -734,7 +896,7 @@ export default function QuizBuilderPage() {
       },
       {
         id: uid(), number: 0, text: "Cell membrane transport requires energy in all cases.",
-        type: "TRUE / FALSE", points: 5, required: true, collapsed: false,
+        type: "TRUE / FALSE", marks: 5, required: true, collapsed: false,
         options: [
           { id: uid(), text: "True",  correct: false },
           { id: uid(), text: "False", correct: true  },
@@ -752,29 +914,35 @@ export default function QuizBuilderPage() {
         <div className="border-b border-border bg-white">
           <div className="w-full px-8 py-3 flex items-center gap-3">
             {[
-              { n: 1, label: "Choose Subject", active: true },
-              { n: 2, label: "Build Quiz",     active: step === "builder" },
+              { n: 1, label: "Choose Subject", active: true, step: "subject" as const },
+              { n: 2, label: "Build Quiz",     active: step === "builder", step: "builder" as const },
             ].map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-300" />}
-                  <div className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
+                  <button onClick={() => {
+                    if(selectedSubject === null){
+                      return
+                    } else {
+                      setStep(s.step)
+                    }
+                  }} className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
                     <span className={`size-5 rounded-full flex items-center justify-center text-[10px] font-bold
                       ${s.active ? "bg-brand-navy text-white" : "bg-slate-100 text-brand-subtitle"}`}>
                       {s.n}
                     </span>
                     {s.label}
-                  </div>
+                  </button>
               </div>
             ))}
             {step === 'builder' ? (
-              <div className="ml-auto">
+              <div className="flex ml-auto gap-2">
                 <Button variant="ghost" size="sm" onClick={handleSaveDraft}
                   className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
                   Save Draft
                 </Button>
-                <Button size="sm" onClick={handlePublishClick}
+                <Button size="sm" onClick={handlePublishClick} disabled={isPublishing}
                   className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
-                  Publish Quiz
+                  {isPublishing ? "Publishing…" : "Publish Quiz"}
                 </Button>
               </div>) : (
               <div className="ml-auto h-9" />
@@ -784,8 +952,16 @@ export default function QuizBuilderPage() {
 
         {/* ── Subject selection ── */}
         {step === "subject" && (
-          <SubjectSelectionScreen onSelect={handleSelectSubject} />
-        )}
+            <SubjectSelectionScreen 
+              onSelect={handleSelectSubject}
+              search={search}
+              subjectsData={filteredSubjects}
+              onSearchChange={setSearch}
+              isLoading={isLoading}
+              profileReady={!!profile?.id}
+            />
+          )
+        }
 
         {/* ── Builder ── */}
         {step === "builder" && selectedSubject && (
@@ -801,21 +977,25 @@ export default function QuizBuilderPage() {
                     </button>
                     <span className="text-slate-300 text-xs">/</span>
                     <span className="text-[11px] font-bold uppercase tracking-widest text-brand-blue">
-                      {selectedSubject.department}
+                      {selectedSubject.code}
                     </span>
                   </div>
                   <h1 className="text-3xl font-bold text-brand-navy tracking-tight">
-                    New {selectedSubject.label} Assessment
+                    New {selectedSubject.name} Assessment
                   </h1>
                 </div>
                 {/* Subject chip */}
-                <div className={`flex items-center gap-2.5 rounded-xl border border-border px-3 py-2 ${selectedSubject.bg} shrink-0`}>
-                  <span className={selectedSubject.iconColor}>
-                    {/* render a smaller copy of the icon */}
-                    <span className="[&>svg]:h-4 [&>svg]:w-4">{selectedSubject.icon}</span>
-                  </span>
-                  <span className={`text-xs font-bold ${selectedSubject.iconColor}`}>{selectedSubject.label}</span>
-                </div>
+                {(() => {
+                  const { bg, iconColor } = getTheme(selectedSubject.color_theme);
+                  return (
+                    <div className={`flex items-center gap-2.5 rounded-xl border border-border px-3 py-2 ${bg} shrink-0`}>
+                      <span className={iconColor}>
+                        <SubjectIcon icon_name={selectedSubject.icon_name} className="h-4 w-4" />
+                      </span>
+                      <span className={`text-xs font-bold ${iconColor}`}>{selectedSubject.name}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Quiz Settings */}
@@ -828,14 +1008,20 @@ export default function QuizBuilderPage() {
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Quiz Title</Label>
-                      <Input value={title} onChange={e => setTitle(e.target.value)}
+                      <Input value={Quiz.name} onChange={e => setQuiz({...Quiz, name: e.target.value})}
                         placeholder="Enter quiz title"
                         className="h-10 text-sm border-border focus-visible:ring-brand-blue rounded-xl" />
                     </div>
                     <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Topics</Label>
+                      <Textarea value={Quiz.topic} onChange={e => setQuiz({...Quiz, topic: e.target.value})}
+                        placeholder="Include the topics this quiz covers e.g ICT, DSA, OOP"
+                        rows={4} className="text-sm border-border focus-visible:ring-brand-blue rounded-xl resize-none" />
+                    </div>
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Description</Label>
-                      <Textarea value={description} onChange={e => setDescription(e.target.value)}
-                        placeholder="Describe what this quiz covers…"
+                      <Textarea value={Quiz.desc} onChange={e => setQuiz({...Quiz, desc: e.target.value})}
+                        placeholder="Describe what this quiz is about"
                         rows={4} className="text-sm border-border focus-visible:ring-brand-blue rounded-xl resize-none" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -843,54 +1029,77 @@ export default function QuizBuilderPage() {
                         <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Time Limit (mins)</Label>
                         <div className="flex items-center gap-2 h-10 border border-border rounded-xl px-3 bg-white">
                           <Clock className="h-3.5 w-3.5 text-brand-subtitle shrink-0" />
-                          <input type="number" min={1} max={300} value={timeLimit}
-                            onChange={e => setTimeLimit(Math.max(1, parseInt(e.target.value) || 1))}
+                          <input type="number" min={1} max={160} value={Quiz.timeLimit}
+                            onChange={e => setQuiz({...Quiz, timeLimit: Math.max(1, parseInt(e.target.value) || 1)})}
                             className="flex-1 text-sm border-0 p-0 bg-transparent focus:outline-none" />
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Grading</Label>
-                        <Select value={grading} onValueChange={setGrading}>
-                          <SelectTrigger className="h-10 text-sm border-border rounded-xl focus:ring-brand-blue">
-                            <div className="flex items-center gap-2">
-                              <Star className="h-3.5 w-3.5 text-brand-subtitle" />
-                              <SelectValue />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            <SelectItem value="standard">Standard</SelectItem>
-                            <SelectItem value="weighted">Weighted</SelectItem>
-                            <SelectItem value="pass-fail">Pass / Fail</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Passing Marks</Label>
+                        <div className="flex items-center gap-2 h-10 border border-border rounded-xl px-3 bg-white">
+                          <CircleCheckBig className="h-3.5 w-3.5 text-brand-subtitle shrink-0" />
+                          <input type="number" min={0} max={totalMarks} value={Quiz.passingMarks || 0} 
+                            onChange={e => {
+                              const val = parseInt(e.target.value);
+                              if (isNaN(val)) {
+                                // Fallback to 0 if the input is entirely cleared
+                                setQuiz({...Quiz, passingMarks: 0});
+                              } else {
+                                // Clamp the value: it cannot be less than 0, and cannot be greater than totalMarks
+                                const clampedValue = Math.max(0, Math.min(val, totalMarks));
+                                setQuiz({...Quiz, passingMarks: clampedValue});
+                              }
+                            }}
+                            className="flex-1 text-sm border-0 p-0 bg-transparent focus:outline-none" />
+                          <span className="text-sm">/</span>
+                          <span className="text-sm">{totalMarks}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Cover image */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Cover Image</Label>
-                    <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-                    <div onClick={() => coverRef.current?.click()}
-                      className="h-42.5 rounded-xl border-2 border-dashed border-border bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden relative">
-                      {coverImage ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white text-xs font-semibold flex items-center gap-1.5">
-                              <Upload className="h-3.5 w-3.5" /> Change image
-                            </span>
+                  <div className="flex flex-col">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Cover Image</Label>
+                      <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                      <div onClick={() => coverRef.current?.click()}
+                        className="h-42.5 rounded-xl border-2 border-dashed border-border bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden relative">
+                        {coverImage ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                              <span className="text-white text-xs font-semibold flex items-center gap-1.5">
+                                <Upload className="h-3.5 w-3.5" /> Change image
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="h-10 w-10 rounded-xl bg-brand-light flex items-center justify-center">
+                              <Plus className="h-5 w-5 text-brand-blue" />
+                            </div>
+                            <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mt-auto">
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Grading</Label>
+                      <Select value={Quiz.gradingType} onValueChange={v => setQuiz({...Quiz, gradingType: v})}>
+                        <SelectTrigger className="h-10 w-full text-sm border-border rounded-xl focus:ring-brand-blue">
+                          <div className="flex items-center gap-2">
+                            <Star className="h-3.5 w-3.5 text-brand-subtitle" />
+                            <SelectValue />
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="h-10 w-10 rounded-xl bg-brand-light flex items-center justify-center">
-                            <Plus className="h-5 w-5 text-brand-blue" />
-                          </div>
-                          <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image</p>
-                        </>
-                      )}
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="standard">Standard</SelectItem>
+                          <SelectItem value="weighted">Weighted</SelectItem>
+                          <SelectItem value="pass-fail">Pass / Fail</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -950,7 +1159,7 @@ export default function QuizBuilderPage() {
                       onDeleteOption={handleDeleteOption}
                       onUpdateOptionText={handleUpdateOptionText}
                       onUpdateQuestionText={handleUpdateQuestionText}
-                      onUpdatePoints={handleUpdatePoints}
+                      onUpdateMarks={handleUpdateMarks}
                       onToggleRequired={handleToggleRequired}
                       onDone={handleDone}
                       onDelete={handleDeleteQuestion}
@@ -984,13 +1193,13 @@ export default function QuizBuilderPage() {
             </div>
 
             {/* Right panel */}
-            <QuizStatsPanel questions={questions} onGenerate={handleGenerate} timeLimit={timeLimit} />
+            <QuizStatsPanel questions={questions} onGenerate={handleGenerate} estimatedMins={estimatedMins} timeLimit={Quiz.timeLimit} totalMarks={totalMarks}/>
           </div>
         )}
 
         {/* Dialogs */}
         <ClearAllDialog open={showClearDialog} onConfirm={handleClearAll} onCancel={() => setShowClearDialog(false)} />
-        <PublishDialog  open={showPublishDialog} title={title} onConfirm={handlePublishConfirm} onCancel={() => setShowPublishDialog(false)} />
+        <PublishDialog  open={showPublishDialog} title={Quiz.name} onConfirm={handlePublishConfirm} onCancel={() => setShowPublishDialog(false)} />
 
         {/* Toasts */}
         <ToastContainer toasts={toasts} dismiss={dismiss} />

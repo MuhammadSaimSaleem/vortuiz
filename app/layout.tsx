@@ -4,6 +4,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProfileProvider } from "@/contexts/ProfileContext";
+import ReactQueryProvider from "@/contexts/Providers";
 
 const inter = Inter({
   variable:'--font-sans',
@@ -38,11 +40,15 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", jakarta.variable, lexend.variable, "font-sans", inter.variable)}
     >
       <body className="min-h-full flex flex-col bg-slate-200">
-        <AuthProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </AuthProvider>
+        <ReactQueryProvider>
+          <AuthProvider>
+            <ProfileProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+            </ProfileProvider>
+          </AuthProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );

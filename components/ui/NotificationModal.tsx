@@ -12,9 +12,7 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-
-const supabase = createClient();
+import { supabase } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type NotifKind = "quiz" | "achievement" | "system";

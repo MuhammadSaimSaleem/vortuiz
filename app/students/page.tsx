@@ -21,7 +21,7 @@ import {
 import Navbar from "@/components/ui/NavBar";
 import Footer from "@/components/ui/Footer";
 import { HiOutlineSparkles } from "react-icons/hi2";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useInView(threshold = 0.15) {
@@ -352,7 +352,6 @@ export default function StudentsPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) return;

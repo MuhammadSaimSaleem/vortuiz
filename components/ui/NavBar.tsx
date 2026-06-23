@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { useTheme } from "next-themes";
 import { Button } from "./button";
 import Link from "next/link";
@@ -135,7 +135,6 @@ function ProfileMenu({ user, role, onLogout }: { user: User; role: string | null
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null); // Added state for user role
   const [loading, setLoading] = useState(true);
@@ -189,7 +188,7 @@ export default function Navbar() {
     );
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

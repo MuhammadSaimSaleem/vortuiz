@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const currentPath = request.nextUrl.pathname
 
-  const publicPages = ['/', '/auth', '/auth/callback', 'features', '/teachers', '/students', '/pricing']
+  const publicPages = ['/', '/auth', '/auth/callback', '/features', '/teachers', '/students', '/pricing']
   const isPublicPage = publicPages.includes(currentPath)
 
   // 1. Unauthenticated users trying to access protected pages
@@ -49,8 +49,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
   }
 
-  // 2. Authenticated users trying to access /auth OR the main landing page '/'
-  if (user && (currentPath === '/auth' || currentPath === '/')) {
+  // 2. Authenticated user logic
+  if (user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -59,8 +59,18 @@ export async function proxy(request: NextRequest) {
 
     const role = profile?.role;
 
-    if (role) {
+    // A. If they try to go back to the home page or login page, send them to their dashboard
+    if (currentPath === '/auth' || currentPath === '/') {
       return NextResponse.redirect(new URL(`/${role}s/dashboard`, request.url));
+    }
+
+    // B. Role Authorization Guard (Catches /students, /students/dashboard, and all deeper sublinks)
+    if (role === 'teacher' && (currentPath === '/students' || currentPath.startsWith('/students/'))) {
+      return NextResponse.redirect(new URL('/teachers/dashboard', request.url));
+    } 
+    
+    if (role === 'student' && (currentPath === '/teachers' || currentPath.startsWith('/teachers/'))) {
+      return NextResponse.redirect(new URL('/students/dashboard', request.url));
     }
   }
 

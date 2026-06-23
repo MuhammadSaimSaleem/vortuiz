@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   AlignJustify,
   BarChart2,
+  Book,
   BookOpen,
   BookText,
   Box,
@@ -15,10 +16,11 @@ import {
   Star,
 } from "lucide-react";
 import Logo from "./Logo";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 const teacherNavItems = [
   { icon: AlignJustify, label: "Dashboard", href: "/teachers/dashboard" },
+  { icon: Book, label: "Subject Management", href: "/teachers/subject-management" },
   { icon: BookOpen, label: "View Quiz", href: "/teachers/quiz/view" },
   { icon: PencilLine, label: "Quiz Builder", href: "/teachers/quiz/create" },
   { icon: BookText, label: "Student Directory", href: "/teachers/student-directory" },
@@ -28,6 +30,7 @@ const teacherNavItems = [
 
 const studentNavItems = [
   { icon: AlignJustify, label: "Dashboard", href: "/students/dashboard" },
+  { icon: Book, label: "Subject Management", href: "/students/subject-management" },
   { icon: BookOpen, label: "View Quiz", href: "/students/quiz/view" },
   { icon: BarChart2, label: "Performance Analytics", href: "/students/analytics" },
   { icon: Box, label: "Resource Library", href: "/students/resource-library" },
@@ -38,15 +41,8 @@ export function Sidebar() {
   const { role } = useAuth();
   const pathname = usePathname();
 
-  const supabase = createClient();
-
   const navItems = role === "teacher" ? teacherNavItems : studentNavItems;
   const router = useRouter();
-
-  const handleLogoClick = () => {
-    const nextRole = role === "teacher" ? "student" : "teacher";
-    router.push(`/${nextRole}s/dashboard`);
-  };
 
   const handleLogOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -63,7 +59,7 @@ export function Sidebar() {
     <aside className="inset-y-0 left-0 z-20 w-full h-full md:w-64 flex flex-col border-r border-slate-200 bg-white">
       {/* Logo */}
       <div className="flex items-center h-14 gap-2 border-b border-slate-100 px-4 ml-1">
-        <button onClick={handleLogoClick} type="button">
+        <button onClick={() => router.push(`/${role}s/dashboard`)} type="button">
           <Logo />
         </button>
       </div>
