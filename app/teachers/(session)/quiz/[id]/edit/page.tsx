@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,7 +46,6 @@ import {
   CheckCircle2,
   CheckSquare,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Circle,
   Clock,
@@ -52,7 +53,10 @@ import {
   GripVertical,
   LayoutList,
   List,
+  Loader2,
+  Lock,
   MoreHorizontal,
+  Palette,
   Plus,
   Search,
   Settings,
@@ -61,7 +65,6 @@ import {
   Target,
   ToggleLeft,
   Trash2,
-  Upload,
   AlertCircle,
   X,
   CircleCheckBig,
@@ -70,7 +73,6 @@ import { supabase } from "@/lib/supabase/client";
 import { useProfile } from "@/contexts/ProfileContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Quiz, Subject } from "@/lib/data";
-import { useQuery } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type QuestionType = "MULTIPLE CHOICE" | "TRUE / FALSE" | "SHORT ANSWER";
@@ -90,6 +92,19 @@ interface Question {
   required: boolean;
   collapsed: boolean;
   options: Option[];
+}
+
+// Shape of a row in the `questions` table
+interface DbQuestion {
+  id: string;
+  quiz_id: string;
+  question: string;
+  type: string;
+  order_index: number;
+  marks: number;
+  options: string[] | null;
+  answer: string | null;
+  topic: string | null;
 }
 
 // ─── icon_name → Lucide icon map ─────────────────────────────────────────────
@@ -172,6 +187,61 @@ const qTypes: { label: QuestionType; icon: React.ReactNode; color: string }[] = 
   { label: "SHORT ANSWER",    icon: <AlignLeft   className="h-5 w-5" />, color: "text-emerald-600 bg-emerald-50"},
 ];
 
+// db `type` <-> UI `QuestionType`
+const TYPE_TO_DB: Record<QuestionType, string> = {
+  "MULTIPLE CHOICE": "multiple-choice",
+  "TRUE / FALSE":    "true-false",
+  "SHORT ANSWER":    "short-answer",
+};
+const TYPE_FROM_DB: Record<string, QuestionType> = {
+  "multiple-choice": "MULTIPLE CHOICE",
+  "true-false":       "TRUE / FALSE",
+  "short-answer":      "SHORT ANSWER",
+};
+
+// Preset cover gradients (stored as raw CSS `background` values in cover_gradient)
+const PRESET_GRADIENTS: string[] = [
+  "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
+  "linear-gradient(135deg, #7c3aed 0%, #c026d3 100%)",
+  "linear-gradient(135deg, #be123c 0%, #fb7185 100%)",
+  "linear-gradient(135deg, #047857 0%, #34d399 100%)",
+  "linear-gradient(135deg, #b45309 0%, #fbbf24 100%)",
+  "linear-gradient(135deg, #0e7490 0%, #22d3ee 100%)",
+  "linear-gradient(135deg, #4338ca 0%, #818cf8 100%)",
+  "linear-gradient(135deg, #111827 0%, #4b5563 100%)",
+];
+
+// Convert a fetched DB question row into the builder's editable Question shape
+function dbQuestionToBuilder(row: DbQuestion, index: number): Question {
+  const type = TYPE_FROM_DB[row.type] ?? "MULTIPLE CHOICE";
+  const rawOptions = Array.isArray(row.options) ? row.options : [];
+
+  let options: Option[];
+  if (type === "SHORT ANSWER") {
+    options = [];
+  } else if (type === "TRUE / FALSE") {
+    options = ["True", "False"].map(text => ({
+      id: uid(), text, correct: row.answer === text,
+    }));
+  } else {
+    options = rawOptions.map(text => ({
+      id: uid(), text, correct: row.answer === text,
+    }));
+    if (options.length === 0) options = defaultOptions(type);
+  }
+
+  return {
+    id: row.id,
+    number: index + 1,
+    text: row.question,
+    type,
+    marks: row.marks ?? 1,
+    required: true,
+    collapsed: true,
+    options,
+  };
+}
+
 // ─── Toast system ─────────────────────────────────────────────────────────────
 function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
   return (
@@ -205,110 +275,6 @@ function useToasts() {
   }, []);
   const dismiss = useCallback((id: string) => setToasts(p => p.filter(t => t.id !== id)), []);
   return { toasts, push, dismiss };
-}
-
-// ─── SubjectSelectionScreen ───────────────────────────────────────────────────
-function SubjectSelectionScreen({
-  onSelect, subjectsData, search, onSearchChange, isLoading, profileReady
-}: {
-  onSelect: (subject: Subject) => void;
-  subjectsData: Subject[];
-  search: string;
-  onSearchChange: (v: string) => void;
-  isLoading: boolean;
-  profileReady: boolean;
-}) {
-  const [hovered, setHovered] = useState<string | null>(null);
-
-  return (
-    <div className="flex-1 max-w-300 mx-auto w-full px-6 py-10">
-      {/* Header */}
-      <div className="mb-10">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-brand-blue mb-2">
-          Step 1 of 2
-        </p>
-        <h1 className="text-3xl font-bold text-brand-navy tracking-tight mb-2">
-          Choose a Subject or Department
-        </h1>
-        <p className="text-brand-subtitle text-sm leading-relaxed max-w-lg">
-          Select the subject area for your quiz. This sets the department context and helps organise your quiz in the library.
-        </p>
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-7">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-subtitle" />
-        <input
-          value={search}
-          onChange={e => onSearchChange(e.target.value)}
-          placeholder="Search subjects…"
-          className="w-full h-11 pl-11 pr-4 rounded-xl border border-border bg-white text-sm text-slate-700 placeholder:text-brand-subtitle focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
-        />
-      </div>
-
-      {/* Conditional Content: Loading vs Empty vs Grid Data */}
-      {(!profileReady || isLoading) ? (
-        /* Subject Grid Skeleton */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="flex flex-col items-center rounded-2xl border-2 border-slate-100 bg-white p-5"
-            >
-              <Skeleton className="w-full aspect-square rounded-xl mb-4" />
-              <Skeleton className="h-4 w-[70%] mb-2" />
-              <Skeleton className="h-3 w-[40%]" />
-            </div>
-          ))}
-        </div>
-      ) : subjectsData.length === 0 ? (
-        /* Empty State */
-        <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
-          <p className="text-sm font-medium text-brand-subtitle">No subjects match &ldquo;{search}&rdquo;</p>
-        </div>
-      ) : (
-        /* Actual Subject Grid Data */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {subjectsData.map(subject => {
-            const { bg, iconColor, accent } = getTheme(subject.color_theme);
-            const isHovered = hovered === subject.id;
-            return (
-              <button
-                key={subject.id}
-                onClick={() => onSelect(subject)}
-                onMouseEnter={() => setHovered(subject.id)}
-                onMouseLeave={() => setHovered(null)}
-                className={`relative flex flex-col items-center rounded-2xl border-2 bg-white p-5 transition-all duration-200 group
-                  ${isHovered ? accent + " shadow-md scale-[1.03]" : "border-border"}
-                  focus:outline-none focus:ring-2 focus:ring-brand-blue`}
-              >
-                <div className={`w-full aspect-square rounded-xl ${bg} flex items-center justify-center mb-4 transition-transform duration-200 ${isHovered ? "scale-105" : ""}`}>
-                  <span className={iconColor}>
-                    <SubjectIcon icon_name={subject.icon_name} className="h-6 w-6" />
-                  </span>
-                </div>
-                <p className={`text-sm font-bold text-center transition-colors ${isHovered ? "text-brand-navy" : "text-slate-600"}`}>
-                  {subject.name}
-                </p>
-                <p className="text-[10px] font-mono text-brand-subtitle mt-0.5 uppercase tracking-wider">
-                  {subject.code}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Footer hint */}
-      <div className="text-center text-xs text-slate-300 mt-10">
-        {(!profileReady || isLoading) ? (
-          <Skeleton className="h-3 w-70 mx-auto" />
-        ) : (
-          `${subjectsData?.length ?? 0} subjects available · You can change this later in quiz Settings`
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ─── QuizStatsPanel ───────────────────────────────────────────────────────────
@@ -635,23 +601,81 @@ function PublishDialog({ open, onConfirm, onCancel, title }: { open: boolean; on
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-export default function QuizBuilderPage() {
-  const { profile } = useProfile();
+// ─── Locked notice (shown when a non-draft quiz is opened for edit) ──────────
+function LockedNotice({ quizId, status }: { quizId: string; status: string }) {
+  return (
+    <div className="flex-1 flex items-center justify-center px-6">
+      <div className="max-w-sm w-full rounded-2xl border border-border bg-white p-8 text-center space-y-4">
+        <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center mx-auto">
+          <Lock className="h-6 w-6 text-amber-500" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-brand-navy mb-1">This quiz can&rsquo;t be edited</h2>
+          <p className="text-sm text-brand-subtitle leading-relaxed">
+            Only quizzes in <span className="font-semibold">draft</span> status can be edited.
+            This quiz is currently <span className="font-semibold">{status}</span>.
+          </p>
+        </div>
+        <Link href={`/teachers/quiz/${quizId}/view`}>
+          <Button className="w-full bg-brand-navy hover:bg-brand-blue text-white font-semibold text-sm h-10 rounded-xl">
+            View Quiz
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
 
-  const [step, setStep] = useState<"subject" | "builder">("subject");
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+function BuilderSkeleton() {
+  return (
+    <div className="flex-1 max-w-400 mx-auto w-full px-6 py-6 grid grid-cols-[1fr_300px] gap-6 items-start">
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-80" />
+        <div className="rounded-2xl border border-border bg-white p-6 space-y-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function QuizEditPage() {
+  console.log("🔥 PAGE FILE LOADED, build:");
+  const { profile } = useProfile();
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const quizId = params.id;
+
+  // ── Load state ───────────────────────────────────────────────────────────
+  const [pageLoading, setPageLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notDraft, setNotDraft] = useState<{ status: string } | null>(null);
+
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
-  // quiz settings
-  const [quiz, setquiz] = useState<Partial<Quiz>>({
+  // quiz settings (string for topics/passing_marks input convenience, matching the original)
+  const [quiz, setquiz] = useState<Partial<Quiz> & { topics?: string }>({
     name: "",
     topics: "",
     description: "",
     duration_minutes: 30,
     passing_marks: 0,
     grading_type: "standard",
+    cover_gradient: "",
   });
-  const [coverImage,  setCoverImage]  = useState<string | null>(null);
+
+  // Track which question ids existed in the DB at load time, so we can
+  // diff on save: anything no longer present gets deleted.
+  const [originalQuestionIds, setOriginalQuestionIds] = useState<Set<string>>(new Set());
 
   // Questions
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -660,89 +684,209 @@ export default function QuizBuilderPage() {
   const [showClearDialog,   setShowClearDialog]   = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { toasts, push, dismiss } = useToasts();
-  const coverRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
+  const [showGradientPicker, setShowGradientPicker] = useState(false);
 
   const estimatedMins = Math.ceil(questions.length * 1.5);
   const totalMarks = questions.reduce((a, q) => a + q.marks, 0);
 
-  const { 
-    data: subjectsData = [],
-    isLoading,
-    error: subjectsError,
-  } = useQuery({
-    queryKey: ['subjects'], 
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .eq('created_by', profile?.id);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      return data;
-    },
-
-    enabled: !!profile?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // 4. Handle your error notification side-effect cleanly
+  // ── Load quiz + subject + questions ─────────────────────────────────────
   useEffect(() => {
-    if (subjectsError) {
-      push('Unable to load subjects', 'error');
+    if (!quizId || !profile?.id) return;
+    let cancelled = false;
+
+    async function loadQuiz() {
+      setPageLoading(true);
+      setLoadError(null);
+      try {
+        const { data: quizData, error: quizError } = await supabase
+          .from("quizzes")
+          .select(`
+            id, creator_id, subject_id, name, description, difficulty,
+            duration_minutes, passing_marks, join_code, status,
+            question_count, participant_count, cover_gradient, topics,
+            created_at, closed_at, total_marks, grading_type,
+            subjects ( id, name, slug, icon_name, color_theme, code )
+          `)
+          .eq("id", quizId)
+          .eq("creator_id", profile?.id)
+          .maybeSingle();
+
+        if (quizError) throw new Error(quizError.message);
+        if (!quizData) { if (!cancelled) setLoadError("Quiz not found."); return; }
+
+        if (quizData.status !== "draft") {
+          if (!cancelled) setNotDraft({ status: quizData.status });
+          return;
+        }
+
+        const { data: questionRows, error: questionsError } = await supabase
+          .from("questions")
+          .select("id, quiz_id, question, type, order_index, marks, options, answer, topic")
+          .eq("quiz_id", quizId)
+          .order("order_index", { ascending: true });
+
+        if (questionsError) throw new Error(questionsError.message);
+
+        if (cancelled) return;
+
+        const subj = Array.isArray(quizData.subjects) ? quizData.subjects[0] : quizData.subjects;
+        setSelectedSubject((subj as Subject) ?? null);
+
+        setquiz({
+          name: quizData.name ?? "",
+          topics: Array.isArray(quizData.topics) ? quizData.topics.join(", ") : "",
+          description: quizData.description ?? "",
+          duration_minutes: quizData.duration_minutes ?? 30,
+          passing_marks: quizData.passing_marks ?? 0,
+          grading_type: quizData.grading_type ?? "standard",
+          cover_gradient: quizData.cover_gradient ?? "",
+        });
+
+        const builderQuestions = (questionRows ?? []).map((row, i) =>
+          dbQuestionToBuilder(row as DbQuestion, i)
+        );
+        setQuestions(builderQuestions);
+        setOriginalQuestionIds(new Set(builderQuestions.map(q => q.id)));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load quiz.";
+        if (!cancelled) setLoadError(message);
+        console.error("[edit] load error:", err);
+      } finally {
+        if (!cancelled) setPageLoading(false);
+      }
     }
-  }, [subjectsError, push]);
 
-  const filteredSubjects = subjectsData.filter(subject => {
-    const query = search.toLowerCase();
-    return (
-      subject.name?.toLowerCase().includes(query) ||
-      subject.code?.toLowerCase().includes(query) ||
-      (subject.description ?? "").toLowerCase().includes(query)
-    );
-  });
-
-  // ── Subject selection ──────────────────────────────────────────────────────
-  const handleSelectSubject = (subject: Subject) => {
-    setSelectedSubject(subject);
-    setStep("builder");
-    push(`${subject.name} selected`, "info");
-  };
+    loadQuiz();
+    return () => { cancelled = true; };
+  }, [quizId, profile?.id]);
 
   // ── quiz settings ──────────────────────────────────────────────────────────
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCoverImage(URL.createObjectURL(file));
-    push("Cover image uploaded");
+  const handleSelectGradient = (g: string) => {
+    setquiz(prev => ({ ...prev, cover_gradient: g }));
+    setShowGradientPicker(false);
   };
 
-  const handleSaveDraft = () => {
-    if (!(quiz.name ?? "").trim()) { push("Please add a quiz title before saving.", "error"); return; }
-    push("Draft saved successfully!");
-  };
+  // ── Validation shared by save + publish ─────────────────────────────────
+  function validateForSave(): string | null {
+    if (!(quiz.name ?? "").trim()) return "Please add a quiz title.";
+    return null;
+  }
 
-  const handlePublishClick = () => {
-    if (!(quiz.name ?? "").trim()) { 
-      push("quiz title is required to publish.", "error"); 
-      return; }
-    if (questions.length === 0) { 
-      push("Add at least one question to publish.", "error"); 
-      return; }
-    if((quiz.passing_marks ?? 0) <= Math.ceil(totalMarks * 0.2)) {
-      push("Passing marks must be atleast 20% of total marks.", "error")
-      return; }
-
-    const noAnswer = questions.find(q => q.type !== "SHORT ANSWER" && !q.options.some((o: Option) => o.correct));
-
-    if (noAnswer) { 
-      push(`Question ${noAnswer.number} has no correct answer marked.`, "error"); 
-      return;
+  function validateForPublish(): string | null {
+    const base = validateForSave();
+    if (base) return base;
+    if (questions.length === 0) return "Add at least one question to publish.";
+    if ((quiz.passing_marks ?? 0) <= Math.ceil(totalMarks * 0.2)) {
+      return "Passing marks must be at least 20% of total marks.";
     }
+    const noAnswer = questions.find(
+      q => q.type !== "SHORT ANSWER" && !q.options.some((o: Option) => o.correct)
+    );
+    if (noAnswer) return `Question ${noAnswer.number} has no correct answer marked.`;
+    return null;
+  }
+
+  // ── Persist questions: update existing, insert new, delete removed ──────
+  async function persistQuestions() {
+    console.log("persist fired");
+    const currentIds = new Set(questions.map(q => q.id));
+    const idsToDelete = [...originalQuestionIds].filter(id => !currentIds.has(id));
+
+    if (idsToDelete.length > 0) {
+      console.log("[save] deleting", idsToDelete);
+      const { error } = await supabase.from("questions").delete().in("id", idsToDelete);
+      console.log("[save] delete done", error);
+      if (error) throw new Error(`Failed removing questions: ${error.message}`);
+    }
+
+    const toUpdate = questions.filter(q => originalQuestionIds.has(q.id));
+    const toInsert = questions.filter(q => !originalQuestionIds.has(q.id));
+
+    for (const [i, q] of questions.entries()) {
+      const payload = {
+        quiz_id: quizId,
+        question: q.text,
+        type: TYPE_TO_DB[q.type],
+        order_index: i,
+        marks: q.marks,
+        options: q.type === "SHORT ANSWER" ? [] : q.options.map(o => o.text),
+        answer: q.options.find(o => o.correct)?.text ?? null,
+      };
+
+      const isUpdate = toUpdate.some(u => u.id === q.id);
+      const isInsert = toInsert.some(u => u.id === q.id);
+
+      if (isUpdate) {
+        console.log("[save] updating", q.id, payload);
+        const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
+        console.log("[save] update result", q.id, error);
+        if (error) throw new Error(`Failed updating question ${i + 1}: ${error.message}`);
+      } else if (isInsert) {
+        console.log("[save] inserting", payload);
+        const { error } = await supabase.from("questions").insert(payload);
+        console.log("[save] insert result", error);
+        if (error) throw new Error(`Failed adding question ${i + 1}: ${error.message}`);
+      }
+    }
+
+    setOriginalQuestionIds(new Set(questions.map(q => q.id)));
+    console.log("[save] persistQuestions done");
+  }
+
+  // ── Save changes (stays draft) ───────────────────────────────────────────
+  const handleSaveChanges = async () => {
+    console.log("[save] click fired");
+    const error = validateForSave();
+    if (error) { push(error, "error"); return; }
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const topicsArray = (quiz.topics ?? "")
+        ? (quiz.topics ?? "").split(",").map(t => t.trim()).filter(Boolean)
+        : [];
+      const { label } = getDifficulty(estimatedMins, quiz.duration_minutes ?? 30);
+
+      const updatePayload = {
+        name: quiz.name ?? "",
+        topics: topicsArray,
+        description: quiz.description ?? "",
+        duration_minutes: quiz.duration_minutes ?? 30,
+        grading_type: quiz.grading_type ?? "standard",
+        question_count: questions.length,
+        difficulty: label.toLowerCase(),
+        total_marks: totalMarks,
+        passing_marks: quiz.passing_marks ?? 0,
+        cover_gradient: quiz.cover_gradient || null,
+      };
+
+      const { error: quizError } = await supabase
+        .from("quizzes")
+        .update(updatePayload)
+        .eq("id", quizId)
+        .eq("creator_id", profile?.id);
+
+      if (quizError) throw new Error(`Quiz update failed: ${quizError.message}`);
+
+      await persistQuestions();
+
+      push("Changes saved.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      push(`Failed to save: ${message}`, "error");
+      console.error("[edit] save error:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Publish ───────────────────────────────────────────────────────────────
+  const handlePublishClick = () => {
+    const error = validateForPublish();
+    if (error) { push(error, "error"); return; }
     setShowPublishDialog(true);
   };
 
@@ -755,61 +899,38 @@ export default function QuizBuilderPage() {
       const topicsArray = (quiz.topics ?? "")
         ? (quiz.topics ?? "").split(",").map(t => t.trim()).filter(Boolean)
         : [];
-
       const { label } = getDifficulty(estimatedMins, quiz.duration_minutes ?? 30);
 
-      if(profile){
-        const insertPayload = {
-          creator_id: profile?.id,
-          subject_id: selectedSubject?.id,
-          name: quiz.name ?? "",
-          topics: topicsArray,
-          description: quiz?.description ?? "",
-          time_limit: quiz?.duration_minutes ?? 30,
-          grading_type: quiz?.grading_type ?? "standard",
-          question_count: questions.length,
-          difficulty: label.toLowerCase(),
-          status: 'published',
-          total_marks: totalMarks,
-          passing_marks: quiz?.passing_marks ?? 0,
-        };
-      
-        const { data: quizInsert, error: quizError } = await supabase
-          .from('quizzes')
-          .insert(insertPayload)
-          .select()
-          .single();
+      const updatePayload = {
+        name: quiz.name ?? "",
+        topics: topicsArray,
+        description: quiz.description ?? "",
+        duration_minutes: quiz.duration_minutes ?? 30,
+        grading_type: quiz.grading_type ?? "standard",
+        question_count: questions.length,
+        difficulty: label.toLowerCase(),
+        status: "published",
+        total_marks: totalMarks,
+        passing_marks: quiz.passing_marks ?? 0,
+        cover_gradient: quiz.cover_gradient || null,
+      };
 
-        if (quizError) throw new Error(`quiz insert failed: ${quizError.message} (code: ${quizError.code})`);
+      const { error: quizError } = await supabase
+        .from("quizzes")
+        .update(updatePayload)
+        .eq("id", quizId)
+        .eq("creator_id", profile?.id);
 
-        const typeMap: Record<QuestionType, string> = {
-          "MULTIPLE CHOICE": "multiple-choice",
-          "TRUE / FALSE":    "true-false",
-          "SHORT ANSWER":    "short-answer",
-        };
+      if (quizError) throw new Error(`Quiz update failed: ${quizError.message}`);
 
-        const questionsPayload = questions.map((q, i) => ({
-          quiz_id:     quizInsert.id,
-          question:    q.text,
-          type:        typeMap[q.type],
-          order_index: i,
-          marks:       q.marks,
-          options: q.options.map((o: Option) => o.text),
-          answer:  q.options.find((o: Option) => o.correct)?.text ?? null,
-        }));
+      await persistQuestions();
 
-        const { error: questionError } = await supabase
-          .from('questions')
-          .insert(questionsPayload);
-
-        if (questionError) throw new Error(`Questions insert failed: ${questionError.message} (code: ${questionError.code})`);
-
-        push("quiz published! Share the join code with your students.", "success");
-      }
+      push("Quiz published! Share the join code with your students.", "success");
+      router.push(`/teachers/quiz/${quizId}/view`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       push(`Failed to publish: ${message}`, "error");
-      console.error("[publish] error:", err);
+      console.error("[edit] publish error:", err);
     } finally {
       setIsPublishing(false);
     }
@@ -903,85 +1024,84 @@ export default function QuizBuilderPage() {
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center px-6">
+        <div className="max-w-sm w-full rounded-2xl border border-border bg-white p-8 text-center space-y-4">
+          <div className="h-12 w-12 rounded-xl bg-rose-50 flex items-center justify-center mx-auto">
+            <AlertCircle className="h-6 w-6 text-rose-500" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-brand-navy mb-1">Couldn&rsquo;t load this quiz</h2>
+            <p className="text-sm text-brand-subtitle leading-relaxed">{loadError}</p>
+          </div>
+          <Link href="/teachers/quiz/view">
+            <Button variant="outline" className="w-full font-semibold text-sm h-10 rounded-xl">
+              Back to Quizzes
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (notDraft) {
+    return (
+      <TooltipProvider>
+        <div className="min-h-screen bg-surface flex flex-col">
+          <LockedNotice quizId={quizId} status={notDraft.status} />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-surface flex flex-col">
-        {/* ── Step indicator strip (Now shown on both screens) ── */}
+        {/* ── Top bar ── */}
         <div className="border-b border-border bg-white">
           <div className="w-full px-8 py-3 flex items-center gap-3">
-            {[
-              { n: 1, label: "Choose Subject", active: true, step: "subject" as const },
-              { n: 2, label: "Build quiz",     active: step === "builder", step: "builder" as const },
-            ].map((s, i) => (
-              <div key={s.n} className="flex items-center gap-2">
-                {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-300" />}
-                  <button onClick={() => {
-                    if(selectedSubject === null){
-                      return
-                    } else {
-                      setStep(s.step)
-                    }
-                  }} className={`flex items-center gap-2 text-xs font-semibold ${s.active ? "text-brand-navy" : "text-slate-300"}`}>
-                    <span className={`size-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                      ${s.active ? "bg-brand-navy text-white" : "bg-slate-100 text-brand-subtitle"}`}>
-                      {s.n}
-                    </span>
-                    {s.label}
-                  </button>
-              </div>
-            ))}
-            {step === 'builder' ? (
+            <Link href={`/teachers/quiz/${quizId}/view`}
+              className="flex items-center gap-1.5 text-xs font-semibold text-brand-subtitle hover:text-brand-navy transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to quiz
+            </Link>
+            <span className="text-slate-300 text-xs">/</span>
+            <span className="text-xs font-bold text-brand-navy">Edit Quiz</span>
+
+            {!pageLoading && (
               <div className="flex ml-auto gap-2">
-                <Button variant="ghost" size="sm" onClick={handleSaveDraft}
+                <Button variant="ghost" size="sm" onClick={handleSaveChanges} disabled={isSaving || isPublishing}
                   className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
-                  Save Draft
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                  {isSaving ? "Saving…" : "Save Changes"}
                 </Button>
-                <Button size="sm" onClick={handlePublishClick} disabled={isPublishing}
+                <Button size="sm" onClick={handlePublishClick} disabled={isPublishing || isSaving}
                   className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
-                  {isPublishing ? "Publishing…" : "Publish quiz"}
+                  {isPublishing ? "Publishing…" : "Publish Quiz"}
                 </Button>
-              </div>) : (
-              <div className="ml-auto h-9" />
+              </div>
             )}
           </div>
         </div>
 
-        {/* ── Subject selection ── */}
-        {step === "subject" && (
-            <SubjectSelectionScreen 
-              onSelect={handleSelectSubject}
-              search={search}
-              subjectsData={filteredSubjects}
-              onSearchChange={setSearch}
-              isLoading={isLoading}
-              profileReady={!!profile?.id}
-            />
-          )
-        }
-
         {/* ── Builder ── */}
-        {step === "builder" && selectedSubject && (
+        {pageLoading ? (
+          <BuilderSkeleton />
+        ) : (
           <div className="flex-1 max-w-400 mx-auto w-full px-6 py-6 grid grid-cols-[1fr_300px] gap-6 items-start">
             <div className="space-y-6">
-              {/* Breadcrumb + back */}
+              {/* Breadcrumb + title */}
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <button onClick={() => setStep("subject")}
-                      className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-brand-subtitle hover:text-brand-blue transition-colors">
-                      <ArrowLeft className="h-3 w-3" /> Change subject
-                    </button>
-                    <span className="text-slate-300 text-xs">/</span>
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-brand-blue">
-                      {selectedSubject.code}
-                    </span>
-                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-brand-blue mb-1">
+                    Editing Draft
+                  </p>
                   <h1 className="text-3xl font-bold text-brand-navy tracking-tight">
-                    New {selectedSubject.name} Assessment
+                    {quiz.name || "Untitled quiz"}
                   </h1>
                 </div>
-                {/* Subject chip */}
-                {(() => {
+                {/* Subject chip (fixed on edit) */}
+                {selectedSubject && (() => {
                   const { bg, iconColor } = getTheme(selectedSubject.color_theme);
                   return (
                     <div className={`flex items-center gap-2.5 rounded-xl border border-border px-3 py-2 ${bg} shrink-0`}>
@@ -994,16 +1114,16 @@ export default function QuizBuilderPage() {
                 })()}
               </div>
 
-              {/* quiz Settings */}
+              {/* Quiz Settings */}
               <div className="rounded-2xl border border-border bg-white p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <Settings className="h-5 w-5 text-brand-blue" />
-                  <h2 className="text-lg font-bold text-brand-navy">quiz Settings</h2>
+                  <h2 className="text-lg font-bold text-brand-navy">Quiz Settings</h2>
                 </div>
                 <div className="grid grid-cols-[1fr_220px] gap-5">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">quiz Title</Label>
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Quiz Title</Label>
                       <Input value={quiz.name ?? ""} onChange={e => setquiz({...quiz, name: e.target.value})}
                         placeholder="Enter quiz title"
                         className="h-10 text-sm border-border focus-visible:ring-brand-blue rounded-xl" />
@@ -1034,7 +1154,7 @@ export default function QuizBuilderPage() {
                         <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Passing Marks</Label>
                         <div className="flex items-center gap-2 h-10 border border-border rounded-xl px-3 bg-white">
                           <CircleCheckBig className="h-3.5 w-3.5 text-brand-subtitle shrink-0" />
-                          <input type="number" min={0} max={totalMarks} value={quiz?.passing_marks ?? 0} 
+                          <input type="number" min={0} max={totalMarks} value={quiz?.passing_marks ?? 0}
                             onChange={e => {
                               const val = parseInt(e.target.value);
                               if (isNaN(val)) {
@@ -1052,36 +1172,55 @@ export default function QuizBuilderPage() {
                     </div>
                   </div>
 
-                  {/* Cover image */}
+                  {/* Cover gradient */}
                   <div className="flex flex-col">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Cover Image</Label>
-                      <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-                      <div onClick={() => coverRef.current?.click()}
-                        className="h-42.5 rounded-xl border-2 border-dashed border-border bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden relative">
-                        {coverImage ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                              <span className="text-white text-xs font-semibold flex items-center gap-1.5">
-                                <Upload className="h-3.5 w-3.5" /> Change image
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Cover</Label>
+                      <div
+                        onClick={() => setShowGradientPicker(p => !p)}
+                        className="h-32 rounded-xl border-2 border-dashed border-border cursor-pointer hover:border-brand-blue transition-colors overflow-hidden relative flex items-center justify-center"
+                        style={quiz.cover_gradient ? { background: quiz.cover_gradient, borderStyle: "solid" } : undefined}
+                      >
+                        {!quiz.cover_gradient && (
+                          <div className="flex flex-col items-center gap-2">
                             <div className="h-10 w-10 rounded-xl bg-brand-light flex items-center justify-center">
-                              <Plus className="h-5 w-5 text-brand-blue" />
+                              <Palette className="h-5 w-5 text-brand-blue" />
                             </div>
-                            <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image</p>
-                          </>
+                            <p className="text-xs text-brand-subtitle font-medium text-center px-4">Choose a cover gradient</p>
+                          </div>
                         )}
-                        
+                        {quiz.cover_gradient && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <span className="text-white text-xs font-semibold flex items-center gap-1.5">
+                              <Palette className="h-3.5 w-3.5" /> Change cover
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-xs text-brand-subtitle font-medium text-center px-4">*Note: If there&apos;s no cover image, a random cover gradient will be assigned.</p>
+
+                      {showGradientPicker && (
+                        <div className="rounded-xl border border-border bg-white p-3 space-y-3">
+                          <div className="grid grid-cols-4 gap-2">
+                            {PRESET_GRADIENTS.map(g => (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => handleSelectGradient(g)}
+                                className={`h-10 rounded-lg border-2 transition-all ${quiz.cover_gradient === g ? "border-brand-navy scale-95" : "border-transparent hover:scale-95"}`}
+                                style={{ background: g }}
+                              />
+                            ))}
+                          </div>
+                          <Input
+                            value={quiz.cover_gradient ?? ""}
+                            onChange={e => setquiz({...quiz, cover_gradient: e.target.value})}
+                            placeholder="or paste a custom CSS gradient/color"
+                            className="h-9 text-xs border-border focus-visible:ring-brand-blue rounded-lg font-mono"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-1.5 mt-auto">
+                    <div className="space-y-1.5 mt-auto pt-3">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Grading</Label>
                       <Select value={quiz?.grading_type ?? "standard"} onValueChange={v => setquiz({...quiz, grading_type: v})}>
                         <SelectTrigger className="h-10 w-full text-sm border-border rounded-xl focus:ring-brand-blue">

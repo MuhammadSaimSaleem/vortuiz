@@ -171,23 +171,24 @@ export type QuizStatus = 'completed' | 'available' | 'in_progress' | 'unavailabl
 
 export interface Quiz {
   id?: string;
-  creatorID: string;        // was: missing entirely
-  subjectID: string;
+  creator_id: string;
+  subject_id: string;
+  subjects: Subject[];
   name: string;
-  topic: string;
-  desc: string;
-  timeLimit: number;
-  gradingType: string;
-  totalMarks: number;
-  passingMarks: number;
-  questionCount: number;
+  topics: string;
+  description: string;
+  duration_minutes: number;
+  grading_type: string;
+  total_marks: number;
+  passing_marks: number;
+  question_count: number;
   difficulty: string;
-  joinCode: string;
+  join_code: string;
   status: QuizStatus;
-  participantCount: number;
-  coverGradient: string;
-  createdAt?: string;             // was: missing
-  closedAt?: string | null;  
+  participant_count: number;
+  cover_gradient: string;
+  created_at?: string;
+  closed_at?: string | null;
 }
 
 export interface Student {

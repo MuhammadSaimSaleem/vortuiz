@@ -37,30 +37,13 @@ import {
 } from "lucide-react";
 import { toPascalCase } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
-import { Quiz, Subject, QuizStatus } from "@/lib/data";
+import { Quiz, Subject } from "@/lib/data";
 
 // Normalised quiz type with an attached subject object (from the join)
-type NormalisedQuiz = Quiz & { subject?: Subject | null; subjects?: unknown };
-
-// ─── Color theme map ──────────────────────────────────────────────────────────
-const COLOR_THEMES: Record<
-  string,
-  { subjectBg: string; subjectText: string; coverGradient: string }
-> = {
-  blue:    { subjectBg: "bg-blue-100",    subjectText: "text-blue-700",    coverGradient: "from-blue-950 via-indigo-900 to-blue-800"    },
-  orange:  { subjectBg: "bg-orange-100",  subjectText: "text-orange-700",  coverGradient: "from-orange-950 via-amber-900 to-yellow-800"  },
-  emerald: { subjectBg: "bg-emerald-100", subjectText: "text-emerald-700", coverGradient: "from-green-950 via-emerald-900 to-green-800"  },
-  purple:  { subjectBg: "bg-purple-100",  subjectText: "text-purple-700",  coverGradient: "from-purple-950 via-violet-900 to-purple-800" },
-  rose:    { subjectBg: "bg-rose-100",    subjectText: "text-rose-700",    coverGradient: "from-rose-950 via-pink-900 to-rose-800"       },
-  teal:    { subjectBg: "bg-teal-100",    subjectText: "text-teal-700",    coverGradient: "from-teal-950 via-cyan-900 to-teal-800"       },
-  indigo:  { subjectBg: "bg-indigo-100",  subjectText: "text-indigo-700",  coverGradient: "from-indigo-950 via-blue-900 to-indigo-800"   },
-  amber:   { subjectBg: "bg-amber-100",   subjectText: "text-amber-700",   coverGradient: "from-amber-950 via-orange-900 to-amber-800"   },
-  slate:   { subjectBg: "bg-slate-100",   subjectText: "text-slate-600",   coverGradient: "from-slate-900 via-slate-800 to-slate-700"    },
+type NormalisedQuiz = Omit<Partial<Quiz>, "subjects"> & {
+  subject?: Subject | null;
+  subjects?: unknown;
 };
-
-function getTheme(colorTheme: string | null) {
-  return COLOR_THEMES[colorTheme ?? "slate"] ?? COLOR_THEMES.slate;
-}
 
 function isValidIcon(
   v: unknown
@@ -132,8 +115,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 // ─── Quiz Card ────────────────────────────────────────────────────────────────
 function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
   const subject = quiz.subject;
-  const theme = getTheme(subject?.color_theme ?? null);
-  const diff = difficultyConfig(quiz.difficulty);
+  const diff = difficultyConfig(quiz.difficulty ?? null);
 
   const cardHref = `/teachers/quiz/${quiz.id}/view`;
   const router = useRouter();
@@ -159,9 +141,9 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
   );
 
   const coverGradient =
-    quiz.coverGradient?.trim()
-      ? quiz.coverGradient
-      : `bg-gradient-to-br ${theme.coverGradient}`;
+    quiz.cover_gradient?.trim()
+      ? quiz.cover_gradient
+      : `bg-gradient-to-br from-slate-900 to-slate-700`;
 
   return (
     <div
@@ -170,12 +152,11 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
       onClick={handleCardClick}
       onKeyDown={(e) => { if (e.key === "Enter") router.push(cardHref); }}
       className="group block rounded-2xl border border-border bg-white overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-    >
+  >
       {/* Cover */}
       <div
         className={`relative h-28 bg-linear-to-br ${coverGradient} overflow-hidden`}
-        style={quiz.coverGradient ? { background: quiz.coverGradient } : undefined}
-      >
+        style={{ background: quiz.cover_gradient }}>
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -207,7 +188,7 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
         <div className="flex items-center gap-1.5 flex-wrap">
           {subject && (
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${theme.subjectBg} ${theme.subjectText}`}
+              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-${subject.color_theme}-100 text-${subject.color_theme}-700`}
             >
               <SubjectIcon iconName={subject.icon_name} className="h-3 w-3" />
               {subject.name}
@@ -227,35 +208,35 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
         
         {/* Description */}
         <div className="h-[1.5lh]">
-          {quiz.desc?.trim() &&
+          {quiz.description?.trim() &&
             <p className="text-xs text-brand-subtitle leading-relaxed line-clamp-2">
-              {quiz.desc}
+              {quiz.description}
             </p>
           }
         </div>
 
         {/* Stats row */}
         <div className="flex items-center gap-3 pt-2 border-t border-border">
-          {quiz.timeLimit != null && quiz.timeLimit > 0 && (
+          {quiz.duration_minutes != null && quiz.duration_minutes > 0 && (
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Clock className="h-3 w-3" />
-              {quiz.timeLimit}m
+              {quiz.duration_minutes}m
             </div>
           )}
           <div className="flex items-center gap-1 text-xs text-slate-400">
             <FileText className="h-3 w-3" />
-            {quiz.questionCount} {quiz.questionCount === 1 ? "question" : "questions"}
+            {quiz.question_count} {quiz.question_count === 1 ? "question" : "questions"}
           </div>
-          {quiz.passingMarks && quiz.totalMarks && (
+          {quiz.passing_marks && quiz.total_marks && (
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Target className="h-3 w-3" />
-              {quiz.passingMarks} marks required out of {quiz.totalMarks}
+              {quiz.passing_marks} marks required out of {quiz.total_marks}
             </div>
           )}
-          {quiz.participantCount > 0 && (
+          {(quiz.participant_count ?? 0) > 0 && (
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Users className="h-3 w-3" />
-              {quiz.participantCount.toLocaleString()}
+              {(quiz.participant_count ?? 0).toLocaleString()}
             </div>
           )}
           <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-auto group-hover:text-brand-blue transition-colors group-hover:translate-x-0.5" />
@@ -365,7 +346,7 @@ export default function QuizPage() {
             topics,
             description,
             difficulty,
-            time_limit,
+            duration_minutes,
             total_marks,
             passing_marks,
             participant_count,
@@ -405,38 +386,18 @@ export default function QuizPage() {
           a.name.localeCompare(b.name)
         );
 
-        // Normalise quiz shape: map DB fields to app `Quiz` shape and attach `subject`
-        const normalised: NormalisedQuiz[] = (quizData ?? []).map((q: Record<string, unknown>) => {
-          const subj = extractSubject(q['subjects']);
-          return {
-            // map fields from Supabase row to our `Quiz` interface
-            id: String(q['id'] ?? ""),
-            creatorID: String(q['creator_id'] ?? profile?.id ?? ""),
-            subjectID: String(q['subject_id'] ?? subj?.id ?? ""),
-            name: String(q['name'] ?? ""),
-            topic: Array.isArray(q['topics']) ? (q['topics'] as string[]).join(",") : String(q['topics'] ?? ""),
-            desc: String(q['description'] ?? ""),
-            timeLimit: Number(q['timeLimit'] ?? q['time_limit'] ?? 0),
-            gradingType: String(q['grading_type'] ?? "standard"),
-            totalMarks: Number(q['total_marks'] ?? q['totalMarks'] ?? 0),
-            passingMarks: Number(q['passing_marks'] ?? q['passingMarks'] ?? 0),
-            questionCount: Number(q['questionCount'] ?? q['question_count'] ?? 0),
-            difficulty: String(q['difficulty'] ?? ""),
-            joinCode: String(q['join_code'] ?? ""),
-            status: (String(q['status'] ?? 'draft') as unknown) as QuizStatus,
-            participantCount: Number(q['participantCount'] ?? q['participant_count'] ?? 0),
-            coverGradient: String(q['cover_gradient'] ?? q['coverGradient'] ?? ""),
-            createdAt: typeof q['created_at'] === 'string' ? String(q['created_at']) : undefined,
-            closedAt: q['closed_at'] ?? null,
-            // attached helpful data
-            subject: subj,
-            subjects: q['subjects'],
-          } as NormalisedQuiz;
-        });
-
         if (!cancelled) {
+          const normalizedQuizzes: NormalisedQuiz[] = (quizData ?? []).map((quiz) => {
+            const quizRecord = quiz as Record<string, unknown>;
+            const { subjects, ...rest } = quizRecord;
+            return {
+              ...rest,
+              subject: extractSubject(subjects),
+            } as NormalisedQuiz;
+          });
+
           setSubjects(derivedSubjects);
-          setQuizzes(normalised);
+          setQuizzes(normalizedQuizzes);
           setLoading(false);
         }
       } catch (err) {
@@ -482,7 +443,7 @@ export default function QuizPage() {
         (q.difficulty ?? "").toLowerCase() === filterDiff.toLowerCase();
 
       const matchSubj =
-        filterSubj === "all" || q.subjectID === filterSubj;
+        filterSubj === "all" || q.subject_id === filterSubj;
 
       const matchStat = filterStat === "all" || q.status === filterStat;
       return matchSearch && matchDiff && matchSubj && matchStat;
