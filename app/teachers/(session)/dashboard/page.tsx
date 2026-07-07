@@ -19,16 +19,22 @@ import {
   TrendingUp,
   Users,
   ClipboardList,
+  Check,
 } from "lucide-react";
-import { AnalyticsData, QuizData } from "@/lib/data";
+import { AnalyticsData, Quiz } from "@/lib/data";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CircleProgress, JoinCodeBadge, StatusBadge } from "@/components/ui/customUI";
+import { CircleProgress, StatusBadge } from "@/components/ui/customUI";
 import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast";
 
 export default function TeacherDashboard() {
+  const router = useRouter();
   const [ analyticsData, setAnalyticsData ] = useState<AnalyticsData | null>(null);
-  const [ quizData, setQuizData ] = useState<QuizData[] | null>(null);
+  const [ quizData, setQuizData ] = useState<Quiz[] | null>(null);
+
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchAll() {
@@ -48,10 +54,10 @@ export default function TeacherDashboard() {
         .select(`
           id, 
           name, 
-          subtitle, 
+          description,
+          status,
           join_code, 
-          participant_count,
-          quiz_affiliations ( status )
+          participant_count
         `, { count: "exact"})
         .eq('creator_id', user?.id)
         .limit(4);
@@ -78,19 +84,27 @@ export default function TeacherDashboard() {
       const formattedQuizzes = quizData?.map(quiz => ({
         id: quiz.id,
         name: quiz.name,
-        subtitle: quiz.subtitle,
-        joinCode: quiz.join_code,
-        status: quiz.quiz_affiliations?.[0]?.status ?? 'Unknown', 
-        participantCount: quiz.participant_count,
-      })) as QuizData[];
+        description: quiz.description,
+        join_code: quiz.join_code,
+        status: quiz.status,
+        participant_count: quiz.participant_count,
+      })) as Quiz[];
 
       setQuizData(formattedQuizzes);
     }
 
     fetchAll();
   })
+      
 
-
+  function handleCopyJoinCode(joinCode: string) {
+    if (!joinCode) return;
+    navigator.clipboard.writeText(joinCode).then(() => {
+      setCopiedCode(joinCode);
+      toast("Join Code copied to clipboard!", "success")
+      setTimeout(() => setCopiedCode(prev => (prev === joinCode ? null : prev)), 1500);
+    });
+  }
 
   return (
     <div className="bg-surface flex-1 flex flex-col min-h-screen">
@@ -181,21 +195,31 @@ export default function TeacherDashboard() {
                 <TableHeader>
                   <TableRow className="border-slate-100 hover:bg-transparent">
                     <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Quiz Name</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Join Code</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle">Status</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle text-right">Participants</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle text-center">Join Code</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle text-center">Status</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-brand-subtitle text-center">Participants</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {quizData?.map((quiz) => (
-                    <TableRow key={quiz.id} className="border-slate-100 group cursor-pointer transition-colors">
-                      <TableCell className="py-4">
+                    <TableRow key={quiz.id} className="border-slate-100 group transition-colors">
+                      <TableCell 
+                        className="max-w-90 py-4 cursor-pointer"
+                        onClick={() => router.push(`/teachers/quiz/${quiz.id}/view`)}>
                         <p className="text-sm font-bold text-slate-800 group-hover:text-brand-blue transition-colors">{quiz.name}</p>
-                        <p className="text-xs text-brand-subtitle font-medium">{quiz.subtitle}</p>
+                        <p className="text-xs text-brand-subtitle font-medium truncate">{quiz.description}</p>
                       </TableCell>
-                      <TableCell><JoinCodeBadge joinCode={quiz.joinCode} /></TableCell>
-                      <TableCell><StatusBadge status={quiz.status} /></TableCell>
-                      <TableCell className="text-right text-sm font-bold text-slate-700">{quiz.participantCount}</TableCell>
+                      <TableCell 
+                        className="text-center  cursor-pointer"
+                        onClick={() => handleCopyJoinCode(quiz.join_code)}
+                      >
+                        <span className={`inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold ${copiedCode === quiz.join_code ? "text-green-600" : "text-brand-navy"} transition-all tracking-wide font-mono border border-blue-100`}>
+                          {copiedCode === quiz.join_code ? <Check className="h-3.5 w-3.5 text-emerald-500 mr-1"/> : ""}
+                          {copiedCode === quiz.join_code ? "Copied" : quiz.join_code}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center"><StatusBadge status={quiz.status} /></TableCell>
+                      <TableCell className="text-center text-sm font-bold text-slate-700">{quiz.participant_count}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -211,7 +235,7 @@ export default function TeacherDashboard() {
               </CardHeader>
               <CardContent className="px-4 pb-6 space-y-2">
                 {[
-                  { icon: Plus, label: "Create New Quiz", sub: "Start a fresh assessment", link: "teachers/quiz/create" },
+                  { icon: Plus, label: "Create New Quiz", sub: "Start a fresh assessment", link: "/teachers/quiz/create" },
                   { icon: Share2, label: "Share Materials", sub: "Send to other educators", link: "/share-material" }, //should open a modal
                 ].map(({ icon: Icon, label, sub, link}) => (
                   <button key={label} className="flex w-full items-center rounded-xl p-3 hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">

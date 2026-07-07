@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,6 @@ import {
   AlignLeft,
   ArrowLeft,
   BarChart2,
-  CheckCheck,
   CheckCircle2,
   CheckSquare,
   ChevronDown,
@@ -62,7 +62,6 @@ import {
   ToggleLeft,
   Trash2,
   Upload,
-  AlertCircle,
   X,
   CircleCheckBig,
 } from "lucide-react";
@@ -109,9 +108,6 @@ function SubjectIcon({ icon_name, className }: { icon_name: string | null; class
   };
   return <>{icons[icon_name ?? ""] ?? <LayoutList className={className ?? "h-6 w-6"} />}</>;
 }
-
-type ToastKind = "success" | "error" | "info";
-interface Toast { id: string; message: string; kind: ToastKind; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -172,41 +168,6 @@ const qTypes: { label: QuestionType; icon: React.ReactNode; color: string }[] = 
   { label: "SHORT ANSWER",    icon: <AlignLeft   className="h-5 w-5" />, color: "text-emerald-600 bg-emerald-50"},
 ];
 
-// ─── Toast system ─────────────────────────────────────────────────────────────
-function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div key={t.id}
-          className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium text-white pointer-events-auto
-            ${t.kind === "success" ? "bg-emerald-600" : t.kind === "error" ? "bg-red-500" : "bg-brand-navy"}`}
-          style={{ animation: "slideUp .2s ease" }}
-        >
-          {t.kind === "success" && <CheckCheck   className="h-4 w-4 shrink-0" />}
-          {t.kind === "error"   && <AlertCircle  className="h-4 w-4 shrink-0" />}
-          {t.kind === "info"    && <Sparkles     className="h-4 w-4 shrink-0" />}
-          {t.message}
-          <button onClick={() => dismiss(t.id)} className="ml-2 opacity-70 hover:opacity-100">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ))}
-      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}`}</style>
-    </div>
-  );
-}
-
-function useToasts() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const push = useCallback((message: string, kind: ToastKind = "success") => {
-    const id = uid();
-    setToasts(p => [...p, { id, message, kind }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3500);
-  }, []);
-  const dismiss = useCallback((id: string) => setToasts(p => p.filter(t => t.id !== id)), []);
-  return { toasts, push, dismiss };
-}
-
 // ─── SubjectSelectionScreen ───────────────────────────────────────────────────
 function SubjectSelectionScreen({
   onSelect, subjectsData, search, onSearchChange, isLoading, profileReady
@@ -228,7 +189,7 @@ function SubjectSelectionScreen({
           Step 1 of 2
         </p>
         <h1 className="text-3xl font-bold text-brand-navy tracking-tight mb-2">
-          Choose a Subject or Department
+          Choose a Subject
         </h1>
         <p className="text-brand-subtitle text-sm leading-relaxed max-w-lg">
           Select the subject area for your quiz. This sets the department context and helps organise your quiz in the library.
@@ -661,7 +622,6 @@ export default function QuizBuilderPage() {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const { toasts, push, dismiss } = useToasts();
   const coverRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
 
@@ -693,9 +653,9 @@ export default function QuizBuilderPage() {
   // 4. Handle your error notification side-effect cleanly
   useEffect(() => {
     if (subjectsError) {
-      push('Unable to load subjects', 'error');
+      toast('Unable to load subjects', 'error');
     }
-  }, [subjectsError, push]);
+  }, [subjectsError]);
 
   const filteredSubjects = subjectsData.filter(subject => {
     const query = search.toLowerCase();
@@ -710,7 +670,7 @@ export default function QuizBuilderPage() {
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
     setStep("builder");
-    push(`${subject.name} selected`, "info");
+    toast(`${subject.name} selected`, "info");
   };
 
   // ── quiz settings ──────────────────────────────────────────────────────────
@@ -718,29 +678,29 @@ export default function QuizBuilderPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setCoverImage(URL.createObjectURL(file));
-    push("Cover image uploaded");
+    toast("Cover image uploaded");
   };
 
   const handleSaveDraft = () => {
-    if (!(quiz.name ?? "").trim()) { push("Please add a quiz title before saving.", "error"); return; }
-    push("Draft saved successfully!");
+    if (!(quiz.name ?? "").trim()) { toast("Please add a quiz title before saving.", "error"); return; }
+    toast("Draft saved successfully!");
   };
 
   const handlePublishClick = () => {
     if (!(quiz.name ?? "").trim()) { 
-      push("quiz title is required to publish.", "error"); 
+      toast("quiz title is required to publish.", "error"); 
       return; }
     if (questions.length === 0) { 
-      push("Add at least one question to publish.", "error"); 
+      toast("Add at least one question to publish.", "error"); 
       return; }
     if((quiz.passing_marks ?? 0) <= Math.ceil(totalMarks * 0.2)) {
-      push("Passing marks must be atleast 20% of total marks.", "error")
+      toast("Passing marks must be atleast 20% of total marks.", "error")
       return; }
 
     const noAnswer = questions.find(q => q.type !== "SHORT ANSWER" && !q.options.some((o: Option) => o.correct));
 
     if (noAnswer) { 
-      push(`Question ${noAnswer.number} has no correct answer marked.`, "error"); 
+      toast(`Question ${noAnswer.number} has no correct answer marked.`, "error"); 
       return;
     }
     setShowPublishDialog(true);
@@ -804,11 +764,11 @@ export default function QuizBuilderPage() {
 
         if (questionError) throw new Error(`Questions insert failed: ${questionError.message} (code: ${questionError.code})`);
 
-        push("quiz published! Share the join code with your students.", "success");
+        toast("quiz published! Share the join code with your students.", "success");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
-      push(`Failed to publish: ${message}`, "error");
+      toast(`Failed to publish: ${message}`, "error");
       console.error("[publish] error:", err);
     } finally {
       setIsPublishing(false);
@@ -821,12 +781,12 @@ export default function QuizBuilderPage() {
       id: uid(), number: 0, text: "", type, marks: 5, required: true, collapsed: false,
       options: defaultOptions(type),
     }]));
-    push(`${type.charAt(0) + type.slice(1).toLowerCase()} question added`, "info");
+    toast(`${type.charAt(0) + type.slice(1).toLowerCase()} question added`, "info");
   };
 
   const handleDeleteQuestion = (qId: string) => {
     setQuestions(prev => renumber(prev.filter(q => q.id !== qId)));
-    push("Question deleted");
+    toast("Question deleted");
   };
 
   const handleDuplicateQuestion = (qId: string) => {
@@ -836,7 +796,7 @@ export default function QuizBuilderPage() {
       const copy: Question = { ...prev[idx], id: uid(), options: prev[idx].options.map(o => ({ ...o, id: uid() })), collapsed: false };
       return renumber([...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
     });
-    push("Question duplicated");
+    toast("Question duplicated");
   };
 
   const handleMoveUp = (qId: string) =>
@@ -861,7 +821,7 @@ export default function QuizBuilderPage() {
     const hasOpen = prev.some(q => !q.collapsed);
     return prev.map(q => ({ ...q, collapsed: hasOpen }));
   });
-  const handleClearAll  = () => { setQuestions([]); setShowClearDialog(false); push("All questions cleared"); };
+  const handleClearAll  = () => { setQuestions([]); setShowClearDialog(false); toast("All questions cleared"); };
 
   const handleToggleCorrect    = (qId: string, oId: string) =>
     setQuestions(prev => prev.map(q => q.id !== qId ? q : {
@@ -899,7 +859,7 @@ export default function QuizBuilderPage() {
         ],
       },
     ]));
-    push("2 AI questions added on Cell Membrane Transport!", "info");
+    toast("2 AI questions added on Cell Membrane Transport!", "info");
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -998,12 +958,12 @@ export default function QuizBuilderPage() {
               <div className="rounded-2xl border border-border bg-white p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <Settings className="h-5 w-5 text-brand-blue" />
-                  <h2 className="text-lg font-bold text-brand-navy">quiz Settings</h2>
+                  <h2 className="text-lg font-bold text-brand-navy">Quiz Details</h2>
                 </div>
                 <div className="grid grid-cols-[1fr_220px] gap-5">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">quiz Title</Label>
+                      <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Title</Label>
                       <Input value={quiz.name ?? ""} onChange={e => setquiz({...quiz, name: e.target.value})}
                         placeholder="Enter quiz title"
                         className="h-10 text-sm border-border focus-visible:ring-brand-blue rounded-xl" />
@@ -1197,8 +1157,6 @@ export default function QuizBuilderPage() {
         <ClearAllDialog open={showClearDialog} onConfirm={handleClearAll} onCancel={() => setShowClearDialog(false)} />
         <PublishDialog  open={showPublishDialog} title={quiz.name ?? "Untitled quiz"} onConfirm={handlePublishConfirm} onCancel={() => setShowPublishDialog(false)} />
 
-        {/* Toasts */}
-        <ToastContainer toasts={toasts} dismiss={dismiss} />
       </div>
     </TooltipProvider>
   );

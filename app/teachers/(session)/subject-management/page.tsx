@@ -723,7 +723,7 @@ export default function SubjectManagementPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand-navy">Subject Management</h1>
+            <h1 className="text-3xl font-heading font-bold text-brand-navy">Subject Management</h1>
             <p className="text-sm text-slate-400 mt-1">Organize and manage your academic curriculum and quiz banks.</p>
           </div>
           <Button

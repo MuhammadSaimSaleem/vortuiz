@@ -1,19 +1,11 @@
 import { QuizStatus } from "@/lib/data";
 
 export function StatusBadge({ status }: { status: QuizStatus }) {
-  const isActive = status === "available";
+  const isActive = status === "published";
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold capitalize ${isActive ? "text-emerald-600" : "text-brand-subtitle"}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
       {status}
-    </span>
-  );
-}
-
-export function JoinCodeBadge({ joinCode }: { joinCode: string }) {
-  return (
-    <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue tracking-wide font-mono border border-blue-100">
-      {joinCode}
     </span>
   );
 }

@@ -466,7 +466,7 @@ export default function QuizPage() {
       {/* Header */}
       <div className="flex items-start">
         <div>
-          <h1 className="text-2xl font-bold text-brand-dark tracking-tight">My Quizzes</h1>
+          <h1 className="text-3xl font-heading font-bold text-brand-navy">My Quizzes</h1>
           <p className="text-sm text-brand-subtitle mt-0.5">Quizzes you have created.</p>
         </div>
       </div>

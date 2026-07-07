@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import ReactQueryProvider from "@/contexts/Providers";
+import { Toaster } from "@/lib/toast";
 
 const inter = Inter({
   variable:'--font-sans',
@@ -45,6 +46,7 @@ export default function RootLayout({
             <ProfileProvider>
               <TooltipProvider>
                 {children}
+                <Toaster />
               </TooltipProvider>
             </ProfileProvider>
           </AuthProvider>
