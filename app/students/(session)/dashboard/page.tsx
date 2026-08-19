@@ -17,14 +17,15 @@ import {
   ChevronRight,
   Clock,
   HelpCircle,
+  Lock,
   MoreVertical,
   Scroll,
   Star,
   TrendingUp,
 } from "lucide-react";
-import * as LucideIcons from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useProfile } from "@/contexts/ProfileContext";
+import { SubjectIcon } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface AssignedQuiz {
@@ -107,7 +108,6 @@ interface SubjectItem {
   description: string | null;
   icon_name: string | null;
   color_theme: string | null;
-  isEnrolled: boolean;
 }
 
 // ─── Score icon helpers ────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ function OverallProgress({ studentData, completedCount, totalCount, loading }: O
   const topPct = studentData?.top_percentile ?? studentData?.overall_percentile;
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-6 flex flex-col justify-between h-full">
+    <div className="rounded-2xl border border-border bg-white p-6 flex flex-col h-full">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-2">
         Overall Progress
       </p>
@@ -240,7 +240,9 @@ function OverallProgress({ studentData, completedCount, totalCount, loading }: O
         </div>
       ) : (
         <div>
-          <p className="text-3xl font-bold text-brand-navy mb-4">{masteryPct}% Mastery</p>
+          <p className="flex items-center gap-2 text-3xl font-bold text-brand-navy mb-4">
+            {masteryPct === 0 ? <Lock size={30}/> : `${masteryPct}%`}
+             Mastery</p>
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-slate-400">Quizzes Completed</span>
             <span className="font-bold text-brand-navy">
@@ -251,9 +253,13 @@ function OverallProgress({ studentData, completedCount, totalCount, loading }: O
             value={progressValue}
             className="h-2.5 rounded-full bg-slate-100 [&>div]:bg-brand-navy [&>div]:rounded-full"
           />
-          {topPct != null && (
+          {(topPct != null && topPct != 0) ? (
             <p className="text-xs text-slate-400 mt-3 italic">
               You&apos;re in the top {topPct}% this month!
+            </p>
+          ) : (
+            <p className="text-xs text-slate-400 mt-3 italic">
+              Complete quizzes to unlock mastery.
             </p>
           )}
         </div>
@@ -302,11 +308,13 @@ function AssignedQuizzes({ quizzes, loading, totalCount }: AssignedQuizzesProps)
       <div className="grid grid-cols-2 gap-4">
         {loading ? (
           Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-white p-5 space-y-3">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-5 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-9 w-24 ml-auto" />
+            <div key={i} className="rounded-2xl border border-border bg-white overflow-hidden">
+              <div className="h-20 bg-slate-100" />
+              <div className="p-5 space-y-3">
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-9 w-24 ml-auto" />
+              </div>
             </div>
           ))
         ) : visibleQuizzes.length === 0 ? (
@@ -317,111 +325,108 @@ function AssignedQuizzes({ quizzes, loading, totalCount }: AssignedQuizzesProps)
           visibleQuizzes.map((quiz) => (
             <div
               key={quiz.id}
-              className="rounded-2xl border border-border overflow-hidden flex flex-col"
-              style={{
-                background: quiz.coverGradient ?? "linear-gradient(to left, #0f172a, #1e293b)",
-              }}
->
-              {/* Card header */}
-              <div className="flex items-start justify-between px-5 pt-5 pb-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-0 ${
-                      quiz.tagVariant === "due"
-                        ? "bg-orange-100 text-orange-600"
-                        : "bg-blue-100 text-brand-blue"
-                    }`}
-                  >
-                    {quiz.tag}
-                  </Badge>
-                  {quiz.difficulty && (
-                    <Badge className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 bg-slate-100 text-slate-500 capitalize">
-                      {quiz.difficulty}
-                    </Badge>
-                  )}
-                  {/* Affiliation status badge */}
-                  <Badge
-                    className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 capitalize ${
-                      quiz.affiliationStatus === "assigned"
-                        ? "bg-violet-100 text-violet-600"
-                        : quiz.affiliationStatus === "in_progress"
-                        ? "bg-amber-100 text-amber-600"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {quiz.affiliationStatus.replace("_", " ")}
-                  </Badge>
-                </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1 text-slate-300">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Title + subtitle */}
-              <div className="px-5 pb-3">
-                <p className="font-bold text-brand-navy text-base leading-tight mb-1">{quiz.title}</p>
-                <p className="text-xs text-black">{quiz.subtitle}</p>
-              </div>
-
-              {/* Topics */}
-              {quiz.topics && quiz.topics.length > 0 && (
-                <div className="px-5 pb-3 flex flex-wrap gap-1.5">
-                  {quiz.topics.slice(0, 3).map((topic) => (
-                    <span
-                      key={topic}
-                      className="text-[10px] font-semibold bg-slate-300 text-brand-blue px-2 py-0.5 rounded-full"
+              className="group rounded-2xl border border-border bg-white overflow-hidden flex flex-col transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+            >
+              {/* Gradient header band: badges + title live here, always white text so contrast holds regardless of gradient */}
+              <div
+                className="relative px-5 pt-4 pb-5"
+                style={{ background: quiz.coverGradient ?? "linear-gradient(to left, #0f172a, #1e293b)" }}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-0 backdrop-blur-sm ${
+                        quiz.tagVariant === "due"
+                          ? "bg-orange-400/90 text-white"
+                          : "bg-white/20 text-white"
+                      }`}
                     >
-                      {topic}
-                    </span>
-                  ))}
-                  {quiz.topics.length > 3 && (
-                    <span className="text-[10px] font-semibold text-black px-1">
-                      +{quiz.topics.length - 3} more
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Meta row */}
-              <div className="flex items-center justify-between px-5 pb-5 mt-auto gap-3">
-                <div className="flex items-center gap-3 text-xs text-black flex-wrap">
-                  {quiz.durationMinutes != null && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {quiz.durationMinutes} min
-                    </span>
-                  )}
-                  {quiz.questionCount > 0 && (
-                    <span className="flex items-center gap-1">
-                      <HelpCircle className="h-3.5 w-3.5" />
-                      {quiz.questionCount} Qs
-                    </span>
-                  )}
-                  {quiz.passingScore != null && (
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Pass: {quiz.passingScore}%
-                    </span>
-                  )}
-                  {quiz.participants != null && (
-                    <span className="flex items-center gap-1.5">
-                      <Avatar className="h-4 w-4">
-                        <AvatarFallback className="bg-brand-navy text-white text-[8px]">U</AvatarFallback>
-                      </Avatar>
-                      +{quiz.participants}
-                    </span>
-                  )}
-                  {/* Assigned date from quiz_affiliations.assigned_at */}
-                  <span className="flex items-center gap-1" title={`Assigned ${new Date(quiz.assignedAt).toLocaleDateString()}`}>
-                    <Scroll className="h-3.5 w-3.5" />
-                    {new Date(quiz.assignedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  </span>
-                </div>
-                <Link href={`/students/quiz/${quiz.id}/view`} className="shrink-0">
-                  <Button className="bg-brand-navy hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
-                    View Details
+                      {quiz.tag}
+                    </Badge>
+                    {quiz.difficulty && (
+                      <Badge className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 bg-white/15 text-white capitalize backdrop-blur-sm">
+                        {quiz.difficulty}
+                      </Badge>
+                    )}
+                    <Badge className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-0 bg-white/15 text-white capitalize backdrop-blur-sm">
+                      {quiz.affiliationStatus.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 -mt-1 -mr-1 text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                </Link>
+                </div>
+                <p className="font-bold text-white text-base leading-tight drop-shadow-sm">{quiz.title}</p>
+              </div>
+
+              {/* White body: everything below reads on a fixed light background, independent of gradient */}
+              <div className="flex flex-col flex-1 px-5 pt-3 pb-5">
+                <p className="text-xs text-slate-500 mb-3">{quiz.subtitle}</p>
+
+                {quiz.topics && quiz.topics.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {quiz.topics.slice(0, 3).map((topic) => (
+                      <span
+                        key={topic}
+                        className="text-[10px] font-semibold bg-brand-light text-brand-blue px-2 py-0.5 rounded-full"
+                      >
+                        {topic}
+                      </span>
+                    ))}
+                    {quiz.topics.length > 3 && (
+                      <span className="text-[10px] font-semibold text-slate-400 px-1 py-0.5">
+                        +{quiz.topics.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-auto gap-3">
+                  <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                    {quiz.durationMinutes != null && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {quiz.durationMinutes} min
+                      </span>
+                    )}
+                    {quiz.questionCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        {quiz.questionCount} Qs
+                      </span>
+                    )}
+                    {quiz.passingScore != null && (
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Pass: {quiz.passingScore}%
+                      </span>
+                    )}
+                    {quiz.participants != null && (
+                      <span className="flex items-center gap-1.5">
+                        <Avatar className="h-4 w-4">
+                          <AvatarFallback className="bg-brand-navy text-white text-[8px]">U</AvatarFallback>
+                        </Avatar>
+                        +{quiz.participants}
+                      </span>
+                    )}
+                    <span
+                      className="flex items-center gap-1"
+                      title={`Assigned ${new Date(quiz.assignedAt).toLocaleDateString()}`}
+                    >
+                      <Scroll className="h-3.5 w-3.5" />
+                      {new Date(quiz.assignedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                  <Link href={`/students/quiz/${quiz.id}/view`} className="shrink-0">
+                    <Button className="bg-brand-navy hover:bg-brand-blue text-white text-xs font-bold h-9 px-5 rounded-xl transition-colors">
+                      View Details
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           ))
@@ -439,7 +444,7 @@ interface PerformanceScoresProps {
 
 function PerformanceScores({ scores, loading }: PerformanceScoresProps) {
   return (
-    <div className="rounded-2xl border border-border bg-white overflow-hidden">
+    <div className="rounded-2xl border border-border bg-white overflow-hidden min-h-32 flex justify-center items-center">
       {loading ? (
         Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className={`flex items-center gap-4 px-5 py-4 ${i < 2 ? "border-b border-border" : ""}`}>
@@ -492,58 +497,28 @@ function getTheme(colorTheme: string | null) {
 
 // Converts any casing the DB might store into PascalCase for the Lucide namespace lookup.
 // e.g. "book-open", "book_open", "BookOpen" → "BookOpen"
-function toPascalCase(str: string): string {
-  return str
-    .replace(/[-_]+/g, " ")
-    .replace(/(?:^|\s)(.)/g, (_, c: string) => c.toUpperCase())
-    .replace(/\s/g, "");
-}
 
-function SubjectIcon({ iconName, size = 28 }: { iconName: string | null; size?: number }) {
-  if (!iconName) {
-    return <HelpCircle size={size} className="text-slate-400" />;
-  }
-
-  const key = toPascalCase(iconName);
-  const keyWithSuffix = key.endsWith("Icon") ? key : `${key}Icon`;
-
-  const icons = LucideIcons as Record<string, unknown>;
-
-  function isValidIcon(v: unknown): v is React.ComponentType<{ size?: number; className?: string }> {
-    return typeof v === "function" || (typeof v === "object" && v !== null && "$$typeof" in (v as object));
-  }
-
-  const Icon = isValidIcon(icons[key])
-    ? (icons[key] as React.ComponentType<{ size?: number; className?: string }>)
-    : isValidIcon(icons[keyWithSuffix])
-    ? (icons[keyWithSuffix] as React.ComponentType<{ size?: number; className?: string }>)
-    : null;
-
-  if (!Icon) {
-    console.warn("[SubjectIcon] No match for icon_name:", iconName, "(tried:", key, "and", keyWithSuffix + ")");
-    return <HelpCircle size={size} className="text-slate-400" />;
-  }
-
-  return <Icon size={size} />;
-}
 
 // ─── Explore Subjects ─────────────────────────────────────────────────────────
 interface ExploreSubjectsProps {
   subjects: SubjectItem[];
   loading: boolean;
-  onToggleEnroll: (subjectId: string, enrolled: boolean) => void;
-  enrollingId: string | null;
 }
 
-function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: ExploreSubjectsProps) {
+function ExploreSubjects({ subjects, loading }: ExploreSubjectsProps) {
   return (
     <section>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center mb-5">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-md bg-brand-light flex items-center justify-center">
             <BookOpen className="h-3.5 w-3.5 text-brand-blue" />
           </div>
           <h2 className="text-base font-bold text-brand-navy">Explore your Subjects</h2>
+        </div>
+        <div className="ml-auto mr-5">
+          <Link href="/students/subject-management" className="text-xs font-semibold text-slate-400 hover:text-brand-blue transition-colors">
+            View All
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8 border-border rounded-lg">
@@ -572,7 +547,6 @@ function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: Exp
         <div className="grid grid-cols-6 gap-4">
           {subjects.map((subject) => {
             const theme = getTheme(subject.color_theme);
-            const isEnrolling = enrollingId === subject.id;
             return (
               <div key={subject.id} className="flex flex-col items-center gap-3 group">
                 <Link
@@ -580,29 +554,15 @@ function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: Exp
                   className="w-full"
                 >
                   <div
-                    className={`w-full aspect-square rounded-2xl ${theme.bg} flex items-center justify-center transition-transform group-hover:scale-105 relative`}
+                    className={`w-full aspect-square rounded-2xl ${theme.bg} flex items-center justify-center transition-transform group-hover:scale-105`}
                   >
                     <SubjectIcon iconName={subject.icon_name} size={28} />
-                    {subject.isEnrolled && (
-                      <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500" title="Enrolled" />
-                    )}
                   </div>
                 </Link>
                 <div className="flex flex-col items-center gap-1 w-full">
                   <span className="text-sm font-medium text-slate-600 group-hover:text-brand-navy transition-colors text-center leading-tight line-clamp-1">
                     {subject.name}
                   </span>
-                  <button
-                    onClick={() => onToggleEnroll(subject.id, subject.isEnrolled)}
-                    disabled={isEnrolling}
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 ${
-                      subject.isEnrolled
-                        ? "bg-emerald-100 text-emerald-700 hover:bg-red-100 hover:text-red-600"
-                        : `${theme.badge} hover:opacity-80`
-                    }`}
-                  >
-                    {isEnrolling ? "…" : subject.isEnrolled ? "Enrolled" : "Enroll"}
-                  </button>
                 </div>
               </div>
             );
@@ -610,22 +570,6 @@ function ExploreSubjects({ subjects, loading, onToggleEnroll, enrollingId }: Exp
         </div>
       )}
     </section>
-  );
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-function Footer() {
-  return (
-    <footer className="mt-12 border-t border-border py-6 px-6 flex items-center justify-between">
-      <p className="text-xs text-slate-400">© 2024 QuizStudio. Elevating the learning experience.</p>
-      <nav className="flex items-center gap-5 text-xs text-slate-400">
-        {["Privacy Policy", "Terms of Service", "Student Handbook"].map((item) => (
-          <Link key={item} href="#" className="hover:text-brand-navy transition-colors">
-            {item}
-          </Link>
-        ))}
-      </nav>
-    </footer>
   );
 }
 
@@ -639,7 +583,6 @@ export default function StudentDashboard() {
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
   // Single unified loading flag — true until all async work is done
   const [loading, setLoading] = useState(true);
@@ -651,7 +594,13 @@ export default function StudentDashboard() {
     let cancelled = false;
 
     async function fetchAll() {
-      if (!profile?.id) return;
+      if (!profile?.id) {
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingSubjects(false);
+        }
+        return;
+      }
 
       try {
         // 2. Profile + student record in parallel
@@ -665,7 +614,7 @@ export default function StudentDashboard() {
 
         if (studentError) console.error("Student fetch error:", studentError);
 
-        // 3. Subjects + enrollments — requires student record for subject_affiliations (student_id = students.id)
+        // 3. Subjects
         const allSubjectsResult = await supabase
           .from("subjects")
           .select("id, name, slug, description, icon_name, color_theme")
@@ -674,19 +623,6 @@ export default function StudentDashboard() {
         if (cancelled) return;
         if (allSubjectsResult.error) console.error("Subjects fetch error:", allSubjectsResult.error.message);
 
-        // subject_affiliations.student_id references students(id), not auth.users(id)
-        let enrolledIds = new Set<string>();
-        if (studentResult) {
-          const enrolledResult = await supabase
-            .from("subject_affiliations")
-            .select("subject_id")
-            .eq("student_id", profile?.id);
-
-          if (cancelled) return;
-          if (enrolledResult.error) console.error("Enrollments fetch error:", enrolledResult.error.message);
-          enrolledIds = new Set((enrolledResult.data ?? []).map((r) => r.subject_id));
-        }
-
         const mappedSubjects: SubjectItem[] = (allSubjectsResult.data ?? []).map((s) => ({
           id: s.id,
           name: s.name,
@@ -694,7 +630,6 @@ export default function StudentDashboard() {
           description: s.description,
           icon_name: s.icon_name,
           color_theme: s.color_theme,
-          isEnrolled: enrolledIds.has(s.id),
         }));
 
         // 4. Quiz affiliations (assigned quizzes) + subject scores — only if a student record exists
@@ -716,14 +651,13 @@ export default function StudentDashboard() {
                 quizzes (
                   id,
                   name,
-                  subtitle,
+                  topics,
                   difficulty,
                   duration_minutes,
-                  passing_score,
+                  passing_marks,
                   question_count,
                   participant_count,
                   cover_gradient,
-                  topics,
                   join_code,
                   closed_at,
                   status
@@ -846,45 +780,14 @@ export default function StudentDashboard() {
 
   const overallLoading = loading;
 
-  // ── Enroll / unenroll handler ─────────────────────────────────────────────
-  // subject_affiliations.student_id references students(id), not auth.users(id)
-  const studentId = profile?.id;
-
-  const handleToggleEnroll = useCallback(async (subjectId: string, enrolled: boolean) => {
-    if (!studentId) return;
-    setEnrollingId(subjectId);
-    try {
-      if (enrolled) {
-        const { error } = await supabase
-          .from("subject_affiliations")
-          .delete()
-          .eq("subject_id", subjectId)
-          .eq("student_id", studentId);
-        if (error) throw error;
-        toast.success("Left subject");
-      } else {
-        const { error } = await supabase
-          .from("subject_affiliations")
-          .insert({ subject_id: subjectId, student_id: studentId });
-        if (error) throw error;
-        toast.success("Joined subject!");
-      }
-      // Optimistic update
-      setSubjects((prev) =>
-        prev.map((s) => s.id === subjectId ? { ...s, isEnrolled: !enrolled } : s)
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Please try again.";
-      toast.error("Failed to update enrollment", { description: msg });
-    } finally {
-      setEnrollingId(null);
-    }
-  }, [studentId]);
-
   return (
     <div className="flex min-h-screen bg-surface flex-1 flex-col">
-      <main className="flex-1 px-6 py-6 space-y-7">
-        {/* Hero row: join banner + progress */}
+      <main className="flex-1 px-6 py-6 space-y-7"> 
+        <div className="flex flex-col mb-5">
+          <h1 className="text-3xl font-extrabold text-brand-navy tracking-tight">Student&apos;s Dashboard</h1>
+          <p className="text-slate-500 mt-1 text-base">Welcome back, <span className="font-bold text-brand-navy/90">{profile?.full_name}</span>. Here are your current quizzes.</p>
+        </div>
+
         <div className="grid grid-cols-[1fr_300px] gap-5">
           <JoinQuizBanner />
           <OverallProgress
@@ -894,7 +797,9 @@ export default function StudentDashboard() {
             loading={overallLoading}
           />
         </div>
-
+        
+        
+        
         {/* Quizzes + scores */}
         <div className="grid grid-cols-[1fr_280px] gap-5 items-start">
           <AssignedQuizzes quizzes={assignedQuizzes} loading={loading} totalCount={assignedQuizzes.length} />
@@ -905,12 +810,8 @@ export default function StudentDashboard() {
         <ExploreSubjects
           subjects={subjects}
           loading={loadingSubjects}
-          onToggleEnroll={handleToggleEnroll}
-          enrollingId={enrollingId}
         />
       </main>
-
-      <Footer />
     </div>
   );
 }

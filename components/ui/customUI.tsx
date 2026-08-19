@@ -1,4 +1,7 @@
 import { QuizStatus } from "@/lib/data";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import { cn } from "@/lib/utils";
 
 export function StatusBadge({ status }: { status: QuizStatus }) {
   const isActive = status === "published";
@@ -25,5 +28,22 @@ export function CircleProgress({ value }: { value: number }) {
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+interface CustomTooltipProps extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {
+  children: React.ReactNode;
+  content: string;
+  arrowClassName?: string;
+}
+
+export function CustomTooltip({ children, content, className, arrowClassName, ...props }: CustomTooltipProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className={cn("text-xs capitalize", className)} arrowClassName={arrowClassName} {...props}>
+        <p>{content}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

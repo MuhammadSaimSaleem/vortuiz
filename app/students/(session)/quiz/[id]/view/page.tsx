@@ -22,7 +22,7 @@ import {
   Target,
   Lock,
 } from "lucide-react";
-import { toPascalCase } from "@/lib/utils";
+import { difficultyConfig, toPascalCase } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Subject {
@@ -88,15 +88,6 @@ function SubjectIcon({ iconName, size = 18, className = "" }: { iconName: string
   return <Icon size={size} className={className} />;
 }
 
-// ─── Difficulty config ────────────────────────────────────────────────────────
-function difficultyConfig(d: string | null) {
-  switch ((d ?? "").toLowerCase()) {
-    case "beginner":     return { label: "Beginner",     cls: "bg-emerald-100 text-emerald-700" };
-    case "intermediate": return { label: "Intermediate", cls: "bg-amber-100 text-amber-700" };
-    case "advanced":     return { label: "Advanced",     cls: "bg-rose-100 text-rose-700" };
-    default:             return { label: d ?? "Quiz",    cls: "bg-slate-100 text-slate-600" };
-  }
-}
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 function PageSkeleton() {

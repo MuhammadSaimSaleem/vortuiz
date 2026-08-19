@@ -309,7 +309,7 @@ function LearnerFeatures() {
 // ─── CTA ─────────────────────────────────────────────────────────────────────
 function CTA() {
   return (
-    <section className="py-24 px-6">
+    <section className="py-24 px-6 bg-blue-50  ">
       <FadeIn>
         <div className="max-w-3xl mx-auto rounded-3xl bg-brand-navy px-8 py-16 text-center relative overflow-hidden">
           <div className="absolute -top-16 -left-16 w-56 h-56 rounded-full bg-white/5 pointer-events-none" />
@@ -326,7 +326,7 @@ function CTA() {
               <Button asChild className="bg-white text-brand-navy hover:bg-blue-50 font-semibold px-7 h-11 rounded-xl text-sm transition-colors">
                 <Link href="/auth">Create Free Account</Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/10 font-semibold px-7 h-11 rounded-xl text-sm gap-2">
+              <Button asChild className="bg-white text-brand-navy hover:bg-blue-50 font-semibold px-7 h-11 rounded-xl text-sm transition-colors">
                 <Link href="/auth">
                   <CalendarClock className="h-4 w-4" /> Schedule a Demo
                 </Link>

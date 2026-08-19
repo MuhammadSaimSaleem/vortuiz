@@ -3,7 +3,6 @@ import { Inter, Lexend, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import ReactQueryProvider from "@/contexts/Providers";
 import { Toaster } from "@/lib/toast";
@@ -42,14 +41,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-200">
         <ReactQueryProvider>
-          <AuthProvider>
             <ProfileProvider>
               <TooltipProvider>
                 {children}
                 <Toaster />
               </TooltipProvider>
             </ProfileProvider>
-          </AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>

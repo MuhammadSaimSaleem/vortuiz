@@ -24,10 +24,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertTriangle,
-  Bell,
   Building2,
+  Check,
   CheckCircle2,
-  Drama,
   Eye,
   EyeOff,
   Globe,
@@ -51,30 +50,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import Image from "next/image";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Profile {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  institution: string | null;
-  institution_id: string | null;
-  role: string | null;
-  avatar_initials: string | null;
-  avatar_url: string | null;
-  student_id: string | null;
-  two_factor_enabled: boolean | null;
-  two_factor_method: "sms" | "email" | "totp" | null;
-  email_notifications: boolean | null;
-  push_notifications: boolean | null;
-  sms_alerts: boolean | null;
-  profile_visibility: string | null;
-  dark_mode: string | null;
-  language: string | null;
-  connected_google: boolean | null;
-  connected_microsoft: boolean | null;
-  password_last_changed_at: string | null;
-}
+import { useProfile } from "@/contexts/ProfileContext";
+import type { Profile } from "@/lib/data";
 
 type Toast = { id: number; message: string; type: "success" | "error" };
 
@@ -310,14 +287,21 @@ function StrengthBar({ password }: { password: string }) {
   );
 }
 
+// A sentinel that can never === the real `profile` value (null | undefined | object),
+// so the sync block below is guaranteed to run on the very first render — even if
+// ProfileContext's `profile` was already populated before this component mounted
+// (e.g. navigating here via <Link> after visiting another page).
+const NOT_SYNCED = Symbol('not-synced');
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Profile() {
+  const { profile, isLoading: loading } = useProfile();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Preferences state
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [twoFactor, setTwoFactor] = useState(false);
   const [emailNotif, setEmailNotif] = useState(false);
   const [pushNotif, setPushNotif] = useState(false);
@@ -369,71 +353,54 @@ export default function Profile() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
-  // ── Fetch profile ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function fetchProfile() {
-      setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  // ── Sync local state from the ProfileContext profile ───────────────────────
+  // ProfileContext already fetches the profile (including institution name and
+  // role-specific fields) on login, so we just mirror it into local state here
+  // instead of re-fetching from Supabase.
+  //
+  // This mirrors an external value into local state, so it's adjusted during
+  // render (comparing against the previous `profile` reference) rather than in
+  // a useEffect. Doing it in an effect would render once with stale/default
+  // state and then immediately re-render with the synced values; doing it
+  // during render lets React apply the update before the screen paints.
+  const [prevProfile, setPrevProfile] = useState<Profile | null | undefined | typeof NOT_SYNCED>(NOT_SYNCED);
+  if (profile !== prevProfile) {
+    setPrevProfile(profile);
 
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    if (profile) {
+      const combinedProfile = profile as unknown as Profile;
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileData && !profileError) {
-        let institutionName = null;
-
-        if (profileData.institution_id) {
-          const { data: institutionData } = await supabase
-            .from("institutions")
-            .select("name")
-            .eq("id", profileData.institution_id)
-            .single();
-          institutionName = institutionData?.name;
-        }
-
-        const combinedProfile: Profile = {
-          ...(profileData as Profile),
-          email: user.email ?? profileData.email,
-          institution: institutionName,
-        };
-
-        setProfile(combinedProfile);
-        setTwoFactor(combinedProfile.two_factor_enabled ?? false);
-        setEmailNotif(combinedProfile.email_notifications ?? false);
-        setPushNotif(combinedProfile.push_notifications ?? false);
-        setSmsAlerts(combinedProfile.sms_alerts ?? false);
-        setVisibility(combinedProfile.profile_visibility ?? "public");
-        setDarkMode((combinedProfile.dark_mode as "light" | "dark") ?? "light");
-        setLanguage(combinedProfile.language ?? "en-us");
-      }
-
-      setLoading(false);
+      setProfileData(combinedProfile);
+      setTwoFactor(combinedProfile.two_factor_enabled ?? false);
+      setEmailNotif(combinedProfile.email_notifications ?? false);
+      setPushNotif(combinedProfile.push_notifications ?? false);
+      setSmsAlerts(combinedProfile.sms_alerts ?? false);
+      setVisibility(combinedProfile.profile_visibility ?? "public");
+      setDarkMode((combinedProfile.dark_mode as "light" | "dark") ?? "light");
+      setLanguage(combinedProfile.language ?? "en-us");
     }
+  }
 
-    fetchProfile();
-  }, []);
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(profileData?.student_code ?? "").then(() => {
+      setCopiedCode(profile?.student_code ?? "");
+      //("Student Code copied to clipboard!", "success")
+      setTimeout(() => setCopiedCode(prev => (prev === profile?.student_code ? null : prev)), 1500);
+    })
+  }
 
   // ── Save preferences helper ────────────────────────────────────────────────
   async function savePreferences(patch: Partial<Profile>) {
-    if (!profile) return;
+    if (!profileData) return;
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
       .update(patch)
-      .eq("id", profile.id);
+      .eq("id", profileData.id);
     if (error) {
       showToast("Failed to save preferences.", "error");
     } else {
-      setProfile((prev) => (prev ? { ...prev, ...patch } : prev));
+      setProfileData((prev) => (prev ? { ...prev, ...patch } : prev));
     }
     setSaving(false);
   }
@@ -483,9 +450,9 @@ export default function Profile() {
     await supabase
       .from("profiles")
       .update({ password_last_changed_at: new Date().toISOString() })
-      .eq("id", profile!.id);
+      .eq("id", profileData!.id);
 
-    setProfile((prev) =>
+    setProfileData((prev) =>
       prev ? { ...prev, password_last_changed_at: new Date().toISOString() } : prev
     );
 
@@ -506,14 +473,14 @@ export default function Profile() {
   }
 
   async function sendTwoFaCode() {
-    if (!profile?.email) return;
+    if (!profileData?.email) return;
     setTwoFaLoading(true);
     setTwoFaError(null);
 
     if (twoFaMethod === "email") {
       // Use Supabase's built-in OTP via email
       const { error } = await supabase.auth.signInWithOtp({
-        email: profile.email,
+        email: profileData.email,
         options: { shouldCreateUser: false },
       });
       if (error) {
@@ -523,7 +490,7 @@ export default function Profile() {
       }
     }
     // For SMS: trigger your own edge function / Twilio etc.
-    // await fetch("/api/send-sms-otp", { method: "POST", body: JSON.stringify({ userId: profile.id }) })
+    // await fetch("/api/send-sms-otp", { method: "POST", body: JSON.stringify({ userId: profileData.id }) })
 
     setTwoFaStep("verify");
     setTwoFaLoading(false);
@@ -542,12 +509,12 @@ export default function Profile() {
 
   async function verifyTwoFaOtp() {
     if (twoFaOtp.length !== 6) return;
-    if (!profile?.email) return;
+    if (!profileData?.email) return;
     setTwoFaLoading(true);
     setTwoFaError(null);
 
     const { error } = await supabase.auth.verifyOtp({
-      email: profile.email,
+      email: profileData.email,
       token: twoFaOtp,
       type: "email",
     });
@@ -622,7 +589,7 @@ export default function Profile() {
     } else {
       const field = provider === "google" ? "connected_google" : "connected_microsoft";
       await savePreferences({ [field]: false } as Partial<Profile>);
-      setProfile((prev) =>
+      setProfileData((prev) =>
         prev ? { ...prev, [field]: false } : prev
       );
       showToast(`${provider} disconnected.`);
@@ -638,7 +605,7 @@ export default function Profile() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected") as "google" | "microsoft" | null;
-    if (!connected || !profile) return;
+    if (!connected || !profileData) return;
 
     void (async () => {
       const field = connected === "google" ? "connected_google" : "connected_microsoft";
@@ -647,10 +614,10 @@ export default function Profile() {
       const { error } = await supabase
         .from("profiles")
         .update({ [field]: true })
-        .eq("id", profile.id);
+        .eq("id", profileData.id);
 
       if (!error) {
-        setProfile((prev) => (prev ? { ...prev, [field]: true } : prev));
+        setProfileData((prev) => (prev ? { ...prev, [field]: true } : prev));
         showToast(`${connected} connected successfully.`);
       } else {
         showToast(`Failed to save connection: ${error.message}`, "error");
@@ -659,14 +626,14 @@ export default function Profile() {
       window.history.replaceState({}, "", "/profile");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id]);
+  }, [profileData?.id]);
 
   // ── Delete account ─────────────────────────────────────────────────────────
   async function handleDeleteAccount() {
-    if (!profile) return;
+    if (!profileData) return;
     // Soft-delete: mark deleted in profiles, then sign out
     // (hard auth delete requires service_role key — do it in an Edge Function)
-    await supabase.from("profiles").update({ deleted_at: new Date().toISOString() }).eq("id", profile.id);
+    await supabase.from("profiles").update({ deleted_at: new Date().toISOString() }).eq("id", profileData.id);
     await supabase.auth.signOut();
     setDeleteOpen(false);
     window.location.href = "/";
@@ -674,9 +641,9 @@ export default function Profile() {
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const passwordNote = (() => {
-    if (!profile?.password_last_changed_at) return "Never changed";
+    if (!profileData?.password_last_changed_at) return "Never changed";
     const days = Math.floor(
-      (Date.now() - new Date(profile.password_last_changed_at).getTime()) / 86_400_000
+      (Date.now() - new Date(profileData.password_last_changed_at).getTime()) / 86_400_000
     );
     return days === 0 ? "Changed today" : `Last changed: ${days} day${days !== 1 ? "s" : ""} ago`;
   })();
@@ -698,18 +665,18 @@ export default function Profile() {
         {/* ── Profile header card ── */}
         <div className="rounded-2xl border border-border bg-white px-7 py-6 flex items-center gap-6">
           <div className="relative shrink-0">
-            <div className="h-20 w-20 rounded-2xl overflow-hidden bg-slate-200 border-2 border-slate-400 shadow-md">
+            <div className="h-20 w-20 rounded-2xl overflow-hidden bg-brand-navy border-2 border-slate-400 shadow-md">
               <div className="h-full w-full flex items-center justify-center">
-                {profile?.avatar_url ? (
+                {profileData?.avatar_url ? (
                     <Image
-                      src={profile?.avatar_url || ""}
+                      src={profileData?.avatar_url || ""}
                       alt="Profile Image"
                       width={100}
                       height={100}
                     />
                   ) : (
                     <span className="text-2xl font-bold text-white">
-                      {profile?.avatar_initials}
+                      {profileData?.avatar_initials}
                     </span>
                   )}
               </div>
@@ -718,10 +685,10 @@ export default function Profile() {
 
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-brand-dark">
-              {profile?.full_name || "N/A"}
+              {profileData?.full_name || "N/A"}
             </h1>
-            <p className="text-sm text-brand-subtitle mt-0.5">
-              {(profile?.role) || "N/A"}
+            <p className="text-sm text-brand-subtitle mt-0.5 capitalize">
+              {(profileData?.role) || "N/A"}
             </p>
           </div>
 
@@ -735,13 +702,24 @@ export default function Profile() {
         {/* ── Personal Info + Account Security ── */}
         <div className="grid grid-cols-2 gap-5">
 
-          {/* Personal Info */}
+          {/* Personal Info */} 
           <div className="rounded-2xl border border-border bg-white p-6">
             <SectionHeader icon={<UserCircle className="h-5 w-5" />} title="Personal Info" />
-            <InfoRow label="Full Name" value={profile?.full_name} icon={<User className="h-3.5 w-3.5" />} />
-            <InfoRow label="Email Address" value={profile?.email} icon={<Mail className="h-3.5 w-3.5" />} />
-            <InfoRow label="Student ID" value={profile?.student_id} icon={<IdCard className="h-3.5 w-3.5" />} />
-            <InfoRow label="Institution" value={profile?.institution} icon={<Building2 className="h-3.5 w-3.5" />} />
+            <InfoRow label="Full Name" value={profileData?.full_name} icon={<User className="h-3.5 w-3.5" />} />
+            <InfoRow label="Email Address" value={profileData?.email} icon={<Mail className="h-3.5 w-3.5" />} />
+            <div className="flex justify-between">
+              <InfoRow label="Student ID" value={profileData?.student_code} icon={<IdCard className="h-3.5 w-3.5" />} />
+              <div>
+                <Button variant={"outline"} onClick={handleCopyCode}>
+                  {copiedCode ? 
+                    <div className="flex gap-1 items-center text-green-600">
+                      <Check size={10}/>
+                      Copied
+                    </div> : "Copy"}
+                </Button>
+              </div>
+            </div>
+            <InfoRow label="Institution" value={profileData?.institution} icon={<Building2 className="h-3.5 w-3.5" />} />
           </div>
 
           {/* Account Security */}
@@ -749,7 +727,7 @@ export default function Profile() {
             <SectionHeader icon={<Shield className="h-5 w-5" />} title="Account Security" />
 
             {/* Password management — hide for OAuth-only users */}
-            {!profile?.connected_google && (
+            {!profileData?.connected_google && (
               <div className="flex items-center justify-between py-3.5 border-b border-border">
                 <div>
                   <p className="text-sm font-semibold text-brand-dark">Password Management</p>
@@ -776,7 +754,7 @@ export default function Profile() {
                 <p className="text-sm font-semibold text-brand-dark">Two-Factor Auth</p>
                 <p className="text-xs text-brand-subtitle mt-0.5">
                   {twoFactor
-                    ? `Enabled via ${(profile?.two_factor_method ?? "email")}`
+                    ? `Enabled via ${(profileData?.two_factor_method ?? "email")}`
                     : "Secure your account with SMS/Email"}
                 </p>
               </div>
@@ -795,21 +773,21 @@ export default function Profile() {
               <div className="flex items-center gap-2">
                 <ConnectedTile
                   label="Google"
-                  connected={profile?.connected_google ?? false}
+                  connected={profileData?.connected_google ?? false}
                   color="bg-slate-200 border-slate-200 text-slate-500"
                   loading={connectLoading === "google"}
                   onClick={() => {
-                    if (profile?.connected_google) setDisconnectOpen("google");
+                    if (profileData?.connected_google) setDisconnectOpen("google");
                     else setConnectOpen("google");
                   }}
                 />
                 <ConnectedTile
                   label="Microsoft"
-                  connected={profile?.connected_microsoft ?? false}
+                  connected={profileData?.connected_microsoft ?? false}
                   color="bg-brand-navy border-brand-navy"
                   loading={connectLoading === "microsoft"}
                   onClick={() => {
-                    if (profile?.connected_microsoft) setDisconnectOpen("microsoft");
+                    if (profileData?.connected_microsoft) setDisconnectOpen("microsoft");
                     else setConnectOpen("microsoft");
                   }}
                 />
@@ -829,7 +807,6 @@ export default function Profile() {
             {/* Notification Settings */}
             <div>
               <div className="flex items-center gap-2 mb-6">
-                <Bell className="h-4 w-4 text-brand-subtitle" />
                 <p className="text-sm font-bold text-brand-dark">Notification Settings</p>
               </div>
               <div className="space-y-8">
@@ -874,12 +851,11 @@ export default function Profile() {
             {/* Privacy & Display */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Eye className="h-4 w-4 text-brand-subtitle" />
                 <p className="text-sm font-bold text-brand-dark">Privacy & Display</p>
               </div>
-              <div className="space-y-4 ml-6">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Drama className="h-4 w-4 text-brand-subtitle" />
+                  <Eye className="h-4 w-4 text-brand-subtitle" />
                   <p className="text-sm text-slate-600">Profile Visibility</p>
                   <div className="ml-auto">
                     <Select value={visibility} onValueChange={(v) => { setVisibility(v); savePreferences({ profile_visibility: v }); }}>
@@ -1104,7 +1080,7 @@ export default function Profile() {
                         {method === "email" ? "Email Code" : "SMS Code"}
                       </p>
                       <p className="text-xs text-brand-subtitle">
-                        {method === "email" ? `Send to ${profile?.email}` : "Send to your phone number"}
+                        {method === "email" ? `Send to ${profileData?.email}` : "Send to your phone number"}
                       </p>
                     </div>
                   </button>
@@ -1141,7 +1117,7 @@ export default function Profile() {
                 </DialogTitle>
                 <DialogDescription>
                   {twoFaMethod === "email"
-                    ? `We sent a 6-digit code to ${profile?.email}`
+                    ? `We sent a 6-digit code to ${profileData?.email}`
                     : "We sent a 6-digit code to your phone."}
                 </DialogDescription>
               </DialogHeader>

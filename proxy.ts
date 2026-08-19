@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
 
   // 2. Authenticated user logic
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -59,18 +59,21 @@ export async function proxy(request: NextRequest) {
 
     const role = profile?.role;
 
-    // A. If they try to go back to the home page or login page, send them to their dashboard
-    if (currentPath === '/auth' || currentPath === '/') {
-      return NextResponse.redirect(new URL(`/${role}s/dashboard`, request.url));
+    if (profileError) {
+      console.error("proxy: failed to fetch profile role", profileError);
     }
 
-    // B. Role Authorization Guard (Catches /students, /students/dashboard, and all deeper sublinks)
-    if (role === 'teacher' && (currentPath === '/students' || currentPath.startsWith('/students/'))) {
-      return NextResponse.redirect(new URL('/teachers/dashboard', request.url));
-    } 
-    
-    if (role === 'student' && (currentPath === '/teachers' || currentPath.startsWith('/teachers/'))) {
-      return NextResponse.redirect(new URL('/students/dashboard', request.url));
+    // A. If they try to go back to the home page or login page, send them to their dashboard
+    if (currentPath === '/auth' || currentPath === '/') {
+      // Role isn't set yet (e.g. mid-onboarding) or the lookup failed — don't
+      // build a /undefineds/dashboard URL for an unknown role.
+      if (role !== 'teacher' && role !== 'student') {
+        if (currentPath === '/auth') {
+          return response // let them stay on /auth to finish onboarding
+        }
+        return NextResponse.redirect(new URL('/auth', request.url));
+      }
+      return NextResponse.redirect(new URL(`/${role}s/dashboard`, request.url));
     }
   }
 

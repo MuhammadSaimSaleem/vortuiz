@@ -36,7 +36,7 @@ import {
   Users,
   Shield,
 } from "lucide-react";
-import { toPascalCase } from "@/lib/utils";
+import { difficultyConfig, toPascalCase } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -118,20 +118,6 @@ function SubjectIcon({
   return <Icon className={className} />;
 }
 
-// ─── Difficulty helpers ───────────────────────────────────────────────────────
-function difficultyConfig(d: string | null): { label: string; color: string; bg: string } {
-  switch ((d ?? "").toLowerCase()) {
-    case "beginner":
-      return { label: "Beginner", color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200" };
-    case "intermediate":
-      return { label: "Intermediate", color: "text-amber-700", bg: "bg-amber-50 border border-amber-200" };
-    case "advanced":
-      return { label: "Advanced", color: "text-rose-700", bg: "bg-rose-50 border border-rose-200" };
-    default:
-      return { label: d ?? "Quiz", color: "text-slate-600", bg: "bg-slate-100" };
-  }
-}
-
 // ─── Error state ──────────────────────────────────────────────────────────────
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -169,7 +155,7 @@ function QuizCard({ quiz }: { quiz: Quiz }) {
   const isLocked     = !isCompleted && !isInProgress && !isAvailable;
 
   const startHref   = `/students/quiz/${quiz.id}/start`;
-  const resultsHref = `/students/quiz/${quiz.id}/result`;
+  const resultsHref = `/students/quiz/${quiz.id}/results`;
   const cardHref    = `/students/quiz/${quiz.id}/view`;
 
   const router = useRouter();
@@ -268,7 +254,7 @@ function QuizCard({ quiz }: { quiz: Quiz }) {
               {subject.name}
             </span>
           )}
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}>
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${diff.cls}`}>
             {diff.label}
           </span>
         </div>
@@ -433,12 +419,11 @@ export default function QuizPage() {
               description,
               difficulty,
               duration_minutes,
-              passing_score,
+              passing_marks,
               participant_count,
               status,
               closed_at,
               cover_gradient,
-              topics,
               subject_id,
               subjects (
                 id,

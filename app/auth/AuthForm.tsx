@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, type ChangeEvent } from "react";
+import { useState, useCallback, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, BookOpen } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { connectGoogle, supabase } from "@/lib/supabase/client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // ── Validation helpers ──────────────────────────────────────────────────────
@@ -22,6 +22,9 @@ const isValidEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 const isStrongPassword = (pw: string) => pw.length >= 8;
+
+const generateRoleCode = (prefix: "TCH" | "STU") =>
+  `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -188,19 +191,23 @@ export default function AuthForm() {
 
     if (tab === "signup") {
       try {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        });
+        console.log("checking email:", formData.email); // TEMP
+        const { data: emailExists, error: checkError } = await supabase
+          .rpc("is_email_registered", { user_email: formData.email });
 
-        if (signUpError) {
-          if (signUpError.message.toLowerCase().includes("already registered")) {
-            setServerError("An account with this email already exists. Please log in.");
-          } else {
-            setServerError(signUpError.message);
-          }
+        console.log("rpc result:", { emailExists, checkError }); // TEMP
+
+        if (checkError) {
+          setServerError(checkError.message);
           return;
         }
+
+        if (emailExists) {
+          setServerError("An account with this email already exists. Please log in.");
+          return;
+        }
+
+        console.log("moving to step 2"); // TEMP
 
         setFormData(prev => ({
           ...prev,
@@ -208,7 +215,8 @@ export default function AuthForm() {
         }));
         setStep("2");
         setIsOpen(false);
-      } catch {
+      } catch (err) {
+        console.error("signup check exception:", err); // TEMP
         setServerError("Something went wrong. Please try again.");
       }
       return;
@@ -248,6 +256,11 @@ export default function AuthForm() {
     }
   };
 
+  const handleStep1Submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handlePrimaryAction();
+  };
+
   const handleCompleteRegistration = async () => {
     setIsSubmitting(true);
     setServerError(null);
@@ -259,11 +272,35 @@ export default function AuthForm() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const isGoogleUser = user?.app_metadata?.provider === "google";
+      const { data: { user: existingUser } } = await supabase.auth.getUser();
+
+      let user = existingUser;
+      let isGoogleUser = user?.app_metadata?.provider === "google";
 
       if (!user) {
-        setServerError("Session expired. Please go back and sign in again.");
+        // No session yet — this is a fresh email/password signup, create the account now.
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (signUpError) {
+          if (signUpError.message.toLowerCase().includes("already registered")) {
+            setServerError("An account with this email already exists. Please log in.");
+            setStep("1");
+            setTab("login");
+          } else {
+            setServerError(signUpError.message);
+          }
+          return;
+        }
+
+        user = signUpData.user;
+        isGoogleUser = false;
+      }
+
+      if (!user) {
+        setServerError("Something went wrong creating your account. Please try again.");
         return;
       }
 
@@ -300,38 +337,76 @@ export default function AuthForm() {
         institutionId = created.id;
       }
 
-      // ── Upsert profile ───────────────────────────────────────────────────────
-      const { error: profileError } = await supabase.from("profiles").update({
-        id: user.id,
-        ...(!isGoogleUser && {
-          full_name: `${formData.first_name} ${formData.last_name}`.trim(),
-        }),
-        avatar_initials: (formData.first_name[0] + (formData.last_name[0] ?? "")).toUpperCase(),
-        role,
-        institution_id: institutionId,
-
-        department:  role === "teacher" ? formData.department        : null,
-        subject:     role === "teacher" ? formData.subject           : null,
-        class_size:  role === "teacher" ? parseInt(formData.class_size) : null,
-
-        student_id:  role === "student" ? formData.student_id        : null,
-        grade_level: role === "student" ? formData.grade_level       : null,
-      })
-      .eq("id", user.id);
+      // ── Update profile (profile-only columns) ─────────────────────────────────
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          ...(!isGoogleUser && {
+            full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+          }),
+          avatar_initials: (formData.first_name[0] + (formData.last_name[0] ?? "")).toUpperCase(),
+          role,
+          institution_id: institutionId,
+        })
+        .eq("id", user.id);
 
       if (profileError) {
         setServerError(profileError.message);
         return;
       }
 
-      if (user.app_metadata.provider === 'google') {
-        router.push(redirectTo);
-        router.refresh();
-      } else {
-        setSuccessMessage("Account created! Please log in.");
-        setStep('1');
-        setTab("login");
+      // ── Upsert role-specific row (teachers / students tables) ─────────────────
+      if (role === "teacher") {
+        const { error: teacherError } = await supabase
+          .from("teachers")
+          .upsert(
+            {
+              user_id: user.id,
+              teacher_code: generateRoleCode("TCH"),
+              department: formData.department,
+              primary_subject: formData.subject,
+              class_size: parseInt(formData.class_size, 10),
+            },
+            { onConflict: "user_id" }
+          );
+
+        if (teacherError) {
+          setServerError(teacherError.message);
+          return;
+        }
+      } else if (role === "student") {
+        const { error: studentError } = await supabase
+          .from("students")
+          .upsert(
+            {
+              user_id: user.id,
+              student_code: generateRoleCode("STU"),
+              grade_level: formData.grade_level,
+              reg_id: formData.student_id,
+            },
+            { onConflict: "user_id" }
+          );
+
+        if (studentError) {
+          setServerError(studentError.message);
+          return;
+        }
       }
+
+      // Guard against a stale/broken `next` param (e.g. built before the role
+      // was known, like "/undefineds/dashboard"). Once we're here, `role` is
+      // guaranteed to be "teacher" or "student" (the Finish button is disabled
+      // otherwise), so it's the trustworthy source of truth for where to send
+      // a freshly-onboarded user. A valid explicit `next` (not pointing at a
+      // broken role placeholder) is still respected, e.g. returning someone to
+      // a protected page they originally tried to visit.
+      const fallbackDashboard = `/${role}s/dashboard`;
+      const isUsableRedirect =
+        redirectTo && redirectTo !== "/" && !redirectTo.includes("undefined");
+
+      router.push(isUsableRedirect ? redirectTo : fallbackDashboard);
+      router.refresh();
+      
     } catch {
       setServerError("Something went wrong. Please try again.");
     } finally {
@@ -355,15 +430,17 @@ export default function AuthForm() {
           transition={{ duration: 0.005, ease: [0.32, 0.72, 0, 1] }}
           className="w-full max-w-225 rounded-2xl shadow-xl border border-border bg-white overflow-hidden"
         >
-          <motion.div
-            className="flex"
-            animate={{ x: step === "1" ? "0%" : "-50%" }}
-            transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
-            style={{ width: "200%" }}
-          >
-            {/* Step 1 — always mounted, takes 50% of track */}
-            <div ref={step === "1" ? measuredRef : null} className="w-1/2 flex shrink-0"
-            style={{ height: step === "1" ? "auto" : "0", overflow: "hidden" }}>
+          <AnimatePresence mode="wait" initial={false}>
+            {step === "1" ? (
+            <motion.div
+              key="step-1"
+              ref={measuredRef}
+              className="w-full flex"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+            >
               {/* ── Left panel — illustration ── */}
               <div
                 className="hidden md:flex w-[44%] shrink-0 relative flex-col justify-end p-8 rounded-l-2xl overflow-hidden"
@@ -475,6 +552,7 @@ export default function AuthForm() {
                   <div className="flex-1 h-px bg-border" />
                 </div>
                 {/* ── Form fields ── */}
+                <form onSubmit={handleStep1Submit} className="contents">
                 <div className="transition-all duration-300 ease-in-out">
                   {/* Signup-only: name row */}
                   <div
@@ -631,10 +709,9 @@ export default function AuthForm() {
                 )}
                 {/* ── Submit ── */}
                 <Button
-                  type="button"
+                  type="submit"
                   disabled={isSubmitting}
                   className="w-full h-11 bg-brand-navy hover:bg-brand-blue font-semibold text-sm rounded-xl transition-colors mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
-                  onClick={handlePrimaryAction}
                 >
                   {isSubmitting
                     ? "Please wait…"
@@ -642,6 +719,7 @@ export default function AuthForm() {
                     ? "Log in to Vortuiz"
                     : "Create Account"}
                 </Button>
+                </form>
                 {/* ── Footer link ── */}
                 <p className="text-center text-sm text-slate-400 mt-5">
                   {tab === "login" ? (
@@ -667,11 +745,33 @@ export default function AuthForm() {
                   )}
                 </p>
               </div>
-            </div>
-
-            {/* Step 2 — always mounted, takes 50% of track */}
-            <div ref={step === "2" ? measuredRef : null} className="w-1/2 flex flex-col p-8 shrink-0"
-            style={{ height: step === "2" ? "auto" : "0", overflow: "hidden" }}>
+            </motion.div>
+            ) : (
+            <motion.div
+              key="step-2"
+              ref={measuredRef}
+              className="w-full flex flex-col p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+            >
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("1");
+                    setIsOpen(false);
+                    setRole(null);
+                    setErrors({});
+                    setServerError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-brand-navy transition-colors"
+                >
+                  <ArrowLeft size={14}/> Back
+                </button>
+              </div>
               <div className="text-center mb-10">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                   Join our community
@@ -859,8 +959,9 @@ export default function AuthForm() {
                   </div>
                 </CollapsibleContent>
               </Collapsible>
-            </div>
-          </motion.div>
+            </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </main>
   );

@@ -26,20 +26,9 @@ import {
   Timer,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/** Mirrors public.questions exactly */
-interface Question {
-  id: string;
-  quiz_id: string;
-  body: string;
-  type: string;
-  order_index: number;
-  points: number;
-  title: string | null;
-  options?: string[];
-}
+import { Question } from "@/lib/data";
+import { useProfile } from "@/contexts/ProfileContext";
+import { CustomTooltip } from "@/components/ui/customUI";
 
 type AnswerStatus = "answered" | "current" | "unanswered";
 
@@ -48,7 +37,6 @@ interface NavQuestion {
   order_index: number;
   status: AnswerStatus;
 }
-
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -63,126 +51,51 @@ function NavButton({
     "w-9 h-9 rounded-lg text-sm font-semibold flex items-center justify-center transition-all duration-150 select-none";
 
   const styles: Record<AnswerStatus, string> = {
-    answered: "bg-[#0f2557] text-white hover:bg-[#1a3a7a] shadow-sm cursor-pointer",
-    current: "bg-white text-[#0f2557] border-2 border-[#0f2557] shadow-md font-bold cursor-default",
+    answered: "bg-brand-navy text-white hover:bg-[#1a3a7a] shadow-sm cursor-pointer",
+    current: "bg-white text-brand-navy border-2 border-brand-navy shadow-md font-bold cursor-default",
     unanswered: "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 cursor-pointer",
+  };
+  const arrowStyles: Record<AnswerStatus, string> = {
+    answered: "bg-brand-navy fill-brand-navy",
+    current: "bg-white fill-white border-2 border-brand-navy",
+    unanswered: "bg-slate-100 fill-slate-100",
   };
 
   return (
     <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className={`${base} ${styles[item.status]}`}
-            onClick={onClick}
-          >
-            {item.order_index}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs capitalize">
-          {item.status === "current"
-            ? "Current question"
-            : `Question ${item.order_index + 1} – ${item.status}`}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function QuestionSkeleton() {
-  return (
-    <div className="space-y-5">
-      <Skeleton className="h-5 w-40 rounded-lg" />
-      <Skeleton className="h-8 w-64 rounded-lg" />
-      <Skeleton className="h-24 w-full rounded-xl" />
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-xl" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function WaveIllustration() {
-  return (
-    <div className="relative w-full h-44 rounded-xl overflow-hidden bg-linear-to-br from-[#0d1b3e] via-[#122a5e] to-[#0a1628] flex items-center justify-center">
-      <svg
-        viewBox="0 0 800 200"
-        className="absolute inset-0 w-full h-full opacity-60"
-        preserveAspectRatio="none"
+    <CustomTooltip
+      side="top"
+      content={
+        item.status === "current"
+          ? "Current question"
+          : `Question ${item.order_index + 1} – ${item.status}`
+      }
+      className={styles[item.status]}
+      arrowClassName={arrowStyles[item.status]}
+    >
+      <button 
+        className={`${base} ${styles[item.status]}`} 
+        onClick={onClick}
       >
-        {[1, 2, 3, 4, 5].map((n) => (
-          <path
-            key={n}
-            d={`M ${(n - 1) * 160} 100 Q ${(n - 1) * 160 + 40} ${100 - 55 + n * 5} ${(n - 1) * 160 + 80} 100 Q ${(n - 1) * 160 + 120} ${100 + 55 - n * 5} ${n * 160} 100`}
-            fill="none"
-            stroke={`hsl(${200 + n * 15}, 80%, ${55 + n * 4}%)`}
-            strokeWidth="2.5"
-            opacity={0.8 - n * 0.1}
-          />
-        ))}
-        <line x1="0" y1="100" x2="800" y2="100" stroke="#94a3b8" strokeWidth="1" strokeDasharray="6 4" opacity="0.4" />
-      </svg>
-      <span className="relative z-10 text-slate-400 text-xs tracking-widest uppercase font-mono">
-        Wave function visualisation
-      </span>
-    </div>
+        {item.order_index}
+      </button>
+    </CustomTooltip>
+  </TooltipProvider>
   );
-}
-
-// ─── useTimer hook ────────────────────────────────────────────────────────────
-
-function useTimer(initialSeconds = 2532) {
-  const [seconds, setSeconds] = useState(initialSeconds);
-
-  useEffect(() => {
-    const id = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
-  const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-  const s = String(seconds % 60).padStart(2, "0");
-  return `${h} : ${m} : ${s}`;
-}
-
-// ─── useStudentId — resolves auth user → students.id ─────────────────────────
-
-function useStudentId() {
-  const [studentId, setStudentId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function resolve() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      const { data } = await supabase
-        .from("students")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-      if (!cancelled && data) setStudentId(data.id as string);
-    }
-    resolve();
-    return () => { cancelled = true; };
-  }, []);
-
-  return studentId;
 }
 
 // ─── useQuiz hook — all Supabase logic ───────────────────────────────────────
 
 function useQuiz(quizId: string) {
-  const studentId = useStudentId();
   const router = useRouter();
+  const { profile } = useProfile();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const [quizData, setQuizData] = useState<{ id: string; name: string; duration_minutes: number } | null>(null);
   // question_id → selected_option text value
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  // question_id → text_response value (short_answer / coding_response)
-  const [textResponses, setTextResponses] = useState<Record<string, string>>({});
   // question_id → flagged boolean (mirrors DB, kept in sync on every upsert)
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
 
@@ -197,14 +110,14 @@ function useQuiz(quizId: string) {
 
   // ── Check affiliation status and redirect if inaccessible ─────────────────
   useEffect(() => {
-    if (!studentId || !quizId) return;
+    if (!profile?.id || !quizId) return;
     let cancelled = false;
 
     async function checkAccess() {
       const { data } = await supabase
         .from("quiz_affiliations")
         .select("status")
-        .eq("student_id", studentId)
+        .eq("student_id", profile?.id)
         .eq("quiz_id", quizId)
         .maybeSingle();
 
@@ -213,7 +126,7 @@ function useQuiz(quizId: string) {
       const affStatus = data?.status?.toLowerCase() ?? null;
 
       if (affStatus === "completed") {
-        router.replace(`/students/quiz/${quizId}/result`);
+        router.replace(`/students/quiz/${quizId}/results`);
       } else if (affStatus !== "available" && affStatus !== "in_progress") {
         router.replace("/students/quiz/view");
       } else {
@@ -224,11 +137,11 @@ function useQuiz(quizId: string) {
 
     checkAccess();
     return () => { cancelled = true; };
-  }, [studentId, quizId, router]);
+  }, [profile?.id, quizId, router]);
 
   // ── Fetch questions + existing responses in one pass ───────────────────────
   useEffect(() => {
-    if (!studentId || !accessChecked) return; // wait until student is resolved and access is verified
+    if (!profile?.id || !accessChecked) return; // wait until student is resolved and access is verified
     let cancelled = false;
 
     async function load() {
@@ -239,67 +152,71 @@ function useQuiz(quizId: string) {
         const { data: qData, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id, quiz_id, body, type, title, options, order_index, points"
+            "id, quiz_id, question, type, options, order_index, answer, marks"
           )
           .eq("quiz_id", quizId)
           .order("order_index", { ascending: true });
 
         if (qErr) throw qErr;
+        
+        const { data: quizData, error: quizErr } = await supabase
+          .from("quizzes")
+          .select(
+            "id, name, duration_minutes"
+          )
+          .eq("id", quizId)
+          .single();
+
+        if(quizErr) throw quizErr;
+
+        setQuizData(quizData);
+
         if (cancelled) return;
 
         const enriched: Question[] = (qData ?? []).map((q) => ({
           ...q,
-          options: (q.options ?? []).flatMap((opt: unknown) => {
-            if (typeof opt === "string") return [opt];
-            if (opt && typeof opt === "object") {
-              const o = opt as Record<string, unknown>;
-              if (Array.isArray(o.content)) return (o.content as unknown[]).map(String);
-              if (o.content != null) return [String(o.content)];
-            }
-            return [];
-          }),
+          options: Array.isArray(q.options) ? q.options.map(String) : [],
         }));
 
         // 2. Existing responses for this student across these questions
         const questionIds = enriched.map((q) => q.id);
         const { data: rData } = await supabase
           .from("question_responses")
-          .select("question_id, selected_option, text_response, flagged_for_review")
-          .eq("student_id", studentId)
+          .select("question_id, responses, flagged_for_review")
+          .eq("student_id", profile?.id)
           .in("question_id", questionIds);
 
         if (cancelled) return;
 
         const hydratedAnswers: Record<string, string> = {};
-        const hydratedTextResponses: Record<string, string> = {};
         const hydratedFlagged: Record<string, boolean> = {};
 
-        const qMap = new Map(enriched.map((q) => [q.id, q]));
+        const questionsById = new Map(enriched.map((q) => [q.id, q]));
 
         for (const r of rData ?? []) {
-          const q = qMap.get(r.question_id);
-          const isTextType =
-            q?.type === "short_answer" || q?.type === "coding_response";
+          if (r.responses) {
+            const q = questionsById.get(r.question_id);
+            const isTextType = q?.type === "short_answer" || q?.type === "coding_response";
 
-          if (r.text_response) {
-            hydratedTextResponses[r.question_id] = r.text_response;
-            hydratedAnswers[r.question_id] = r.text_response; // marks nav as answered
-          } else if (r.selected_option && q && !isTextType) {
-            // Find the index of the stored option text
-            const idx = (q.options ?? []).indexOf(r.selected_option);
-            if (idx !== -1) hydratedAnswers[r.question_id] = String(idx);
+            if (isTextType || !q?.options) {
+              hydratedAnswers[r.question_id] = r.responses;
+            } else {
+              // responses is stored as option TEXT — convert back to its index
+              // so it matches the valueKey (String(idx)) used by the RadioGroup.
+              const idx = q.options.indexOf(r.responses);
+              hydratedAnswers[r.question_id] = idx >= 0 ? String(idx) : r.responses;
+            }
           }
-
           hydratedFlagged[r.question_id] = r.flagged_for_review ?? false;
         }
 
         setQuestions(enriched);
         setAnswers(hydratedAnswers);
-        setTextResponses(hydratedTextResponses);
         setFlagged(hydratedFlagged);
       } catch (err: unknown) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load questions.");
+          console.log(err);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -308,7 +225,7 @@ function useQuiz(quizId: string) {
 
     load();
     return () => { cancelled = true; };
-  }, [quizId, studentId, accessChecked, refetchCount]);
+  }, [quizId, profile?.id, accessChecked, refetchCount]);
 
   // ── Derived nav items ──────────────────────────────────────────────────────
   const navQuestions: NavQuestion[] = questions.map((q, idx) => ({
@@ -338,11 +255,32 @@ function useQuiz(quizId: string) {
   const saveTextResponse = useCallback(
     (value: string) => {
       if (!current) return;
-      setTextResponses((prev) => ({ ...prev, [current.id]: value }));
       setAnswers((prev) => ({ ...prev, [current.id]: value })); // keeps nav "answered"
     },
     [current]
   );
+
+  function useTimer(duration_left_minutes: number) {
+    // Convert minutes to seconds (e.g., 30 mins * 60 = 1800 seconds)
+    const [seconds, setSeconds] = useState(duration_left_minutes * 60);
+
+    useEffect(() => {
+      // Reset state if the duration changes after initial load
+      setSeconds(duration_left_minutes * 60);
+    }, [duration_left_minutes]);
+
+    useEffect(() => {
+      const id = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
+      return () => clearInterval(id);
+    }, []);
+
+    // Your math works perfectly now because 'seconds' is genuinely total seconds
+    const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
+    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+    
+    return `${h} : ${m} : ${s}`;
+  }
 
   // ── Toggle flagged_for_review ──────────────────────────────────────────────
   const toggleFlag = useCallback(
@@ -356,33 +294,37 @@ function useQuiz(quizId: string) {
   const allAnswered = questions.length > 0 && Object.keys(answers).length === questions.length;
 
   // ── Resolve a question into its DB response payload ─────────────────────────
+  // Everything — MCQ/true-false selection, short answer text, or code — is
+  // stored as plain text in the single `responses` column.
   const buildResponseRow = useCallback(
     (q: Question) => {
       const isTextType = q.type === "short_answer" || q.type === "coding_response";
-      let selectedOption: string | null = null;
-      if (!isTextType && answers[q.id]) {
-        const idx = Number(answers[q.id]);
-        selectedOption = q.options?.[idx] ?? null;
+      const raw = answers[q.id] ?? "";
+
+      let responseValue: string | null = null;
+      if (isTextType) {
+        responseValue = raw || null;
+      } else if (raw !== "") {
+        const idx = Number(raw);
+        responseValue = q.options?.[idx] ?? null;
       }
+
       return {
-        student_id: studentId as string,
+        student_id: profile?.id as string,
         question_id: q.id,
-        selected_option: selectedOption,
-        text_response: isTextType ? (textResponses[q.id]?.trim() || null) : null,
+        responses: responseValue,
         flagged_for_review: flagged[q.id] ?? false,
       };
     },
-    [studentId, answers, textResponses, flagged]
+    [profile?.id, answers, flagged]
   );
-
-  
 
   // ── Persist the current question's response to DB ────────────────────────
   const saveCurrentResponse = useCallback(
     async (): Promise<void> => {
-      if (!current || !studentId) return;
+      if (!current || !profile?.id) return;
       const row = buildResponseRow(current);
-      if (!row.selected_option && !row.text_response) return;
+      if (!row.responses) return;
       setSaving(true);
       try {
         const { error: err } = await supabase
@@ -393,31 +335,41 @@ function useQuiz(quizId: string) {
         setSaving(false);
       }
     },
-    [current, studentId, buildResponseRow]
+    [current, profile?.id, buildResponseRow]
   );
 
   const updateAffiliationStatus = useCallback(
     async (status: "in_progress" | "completed"): Promise<void> => {
-      if (!studentId) return;
-      const { error: err } = await supabase
+      if (!profile?.id) return;
+      const { data, error: err } = await supabase
         .from("quiz_affiliations")
         .update({ status })
-        .eq("student_id", studentId)
-        .eq("quiz_id", quizId);
-      if (err) console.error("[updateAffiliationStatus]", err);
+        .eq("student_id", profile?.id)
+        .eq("quiz_id", quizId)
+        .select("quiz_id"); // forces returning affected rows
+
+      if (err) {
+        console.error("[updateAffiliationStatus] error:", err);
+      } else if (!data || data.length === 0) {
+        // Update ran but matched 0 rows — almost always an RLS policy mismatch
+        console.error(
+          "[updateAffiliationStatus] 0 rows updated — check RLS policy on quiz_affiliations (student_id vs auth.uid())"
+        );
+      }
     },
-    [studentId, quizId]
+    [profile?.id, quizId]
   );
 
   // ── Submit quiz — persist all answered responses ──────────────────────────
   const submitQuiz = useCallback(
     async (): Promise<{ error: string | null }> => {
-      if (!studentId) return { error: "Student not resolved." };
+      if (!profile?.id) return { error: "Student not resolved." };
       setSaving(true);
       try {
         const rows = questions
-          .filter((q) => answers[q.id] || textResponses[q.id])
-          .map(buildResponseRow);
+          .filter((q) => answers[q.id])
+          .map(buildResponseRow)
+          .filter((row) => row.responses);
 
         if (rows.length > 0) {
           const { error: err } = await supabase
@@ -437,7 +389,7 @@ function useQuiz(quizId: string) {
         setSaving(false);
       }
     },
-    [studentId, questions, answers, textResponses, buildResponseRow, updateAffiliationStatus]
+    [profile?.id, questions, answers, buildResponseRow, updateAffiliationStatus]
   );
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -451,13 +403,16 @@ function useQuiz(quizId: string) {
   const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
   const goPrev = useCallback(() => goTo(currentIndex - 1), [currentIndex, goTo]);
 
+  const timer = useTimer(quizData?.duration_minutes ?? 10);
+
   return {
     questions,
     navQuestions,
     current,
     currentIndex,
+    quizData,
+    timer,
     selectedAnswer,
-    textResponses,
     loading,
     accessChecked,
     saving,
@@ -485,14 +440,13 @@ export default function QuizPage() {
   const router = useRouter();
   const quizId = Array.isArray(params.id) ? params.id[0] : (params.id ?? "");
 
-  const timer = useTimer();
-
   const {
     navQuestions,
     current,
     currentIndex,
+    quizData,
+    timer,
     selectedAnswer,
-    textResponses,
     loading,
     accessChecked,
     saving,
@@ -531,7 +485,7 @@ export default function QuizPage() {
 
   async function handleSaveAndNext() {
     await saveCurrentResponse();
-    if (isLastQuestion) {
+    if (isLastQuestion || answeredCount === 15) {
       setSubmitError(null);
       setShowSubmitModal(true);
     } else {
@@ -619,17 +573,22 @@ export default function QuizPage() {
 
         {/* Exam Info */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
-          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1">
+          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
             Exam Info
           </p>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-slate-500">Quiz Name</span>
+            <CustomTooltip content={quizData?.name ?? ""} className="bg-brand-navy" arrowClassName="bg-brand-navy fill-brand-navy">
+              <span className="w-25 text-xs font-semibold text-slate-800 truncate text-left">{quizData?.name}</span>
+            </CustomTooltip>
+          </div>
           {[
-            ["Quiz ID", quizId ? quizId.slice(0, 8) + "…" : "—"],
             ["Questions", questions.length.toString()],
             ["Answered", `${answeredCount} of ${questions.length}`],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between items-center">
               <span className="text-xs text-slate-500">{k}</span>
-              <span className="text-xs font-semibold text-slate-800">{v}</span>
+              <span className="w-25 text-xs font-semibold text-slate-800 text-right">{v}</span>
             </div>
           ))}
         </div>
@@ -669,7 +628,7 @@ export default function QuizPage() {
               <BookmarkIcon size={14} fill={isMarked ? "currentColor" : "none"} />
               {isMarked ? "Marked" : "Mark for Review"}
             </Button>
-            {isLastQuestion ? (
+            {isLastQuestion || answeredCount === 15 ? (
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 gap-2 rounded-xl disabled:opacity-40"
                 onClick={handleSaveAndNext}
@@ -712,7 +671,18 @@ export default function QuizPage() {
             )}
 
             {/* Loading skeleton */}
-            {loading && <QuestionSkeleton />}
+            {loading && 
+              <div className="space-y-5">
+                <Skeleton className="h-5 w-40 rounded-lg" />
+                <Skeleton className="h-8 w-64 rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                  ))}
+                </div>
+              </div>
+            }
 
             {/* Empty state */}
             {!loading && !error && !current && (
@@ -738,8 +708,8 @@ export default function QuizPage() {
                         variant="outline"
                         className="text-[10px] font-bold tracking-widest uppercase text-indigo-600 border-indigo-200 bg-indigo-50 px-2.5 py-0.5"
                       >
-                        Question {currentIndex + 1} · {current.points}{" "}
-                        {current.points === 1 ? "Point" : "Points"}
+                        Question {currentIndex + 1} · {current.marks}{" "}
+                        {current.marks === 1 ? "Point" : "Points"}
                       </Badge>
                       <Badge
                           variant="outline"
@@ -760,7 +730,7 @@ export default function QuizPage() {
                       )}
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                      {current.title ?? "Question"}
+                      {current.question ?? "Question"}
                     </h2>
                   </div>
 
@@ -785,15 +755,6 @@ export default function QuizPage() {
                   </TooltipProvider>
                 </div>
 
-                {/* Question body */}
-                <p className="text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">
-                  {current.body}
-                </p>
-
-                {/* Optional wave illustration for physics questions */}
-                {current.type === "multiple_choice" && current.title?.toLowerCase().includes("wave") && (
-                  <WaveIllustration />
-                )}
 
                 {/* MCQ & True/False Options */}
                 {(current.type === "multiple_choice" || current.type === "true_false") && current.options && current.options.length > 0 ? (
@@ -835,7 +796,7 @@ export default function QuizPage() {
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Your Answer</p>
                     <textarea
-                      value={textResponseDraft[current.id] ?? textResponses[current.id] ?? ""}
+                      value={textResponseDraft[current.id] ?? selectedAnswer ?? ""}
                       onChange={(e) => {
                         setTextResponseDraft((prev) => ({ ...prev, [current.id]: e.target.value }));
                       }}
@@ -859,7 +820,7 @@ export default function QuizPage() {
                         <span className="ml-3 text-[11px] font-mono text-slate-500">answer.js</span>
                       </div>
                       <textarea
-                        value={textResponseDraft[current.id] ?? textResponses[current.id] ?? ""}
+                        value={textResponseDraft[current.id] ?? selectedAnswer ?? ""}
                         onChange={(e) => {
                           setTextResponseDraft((prev) => ({ ...prev, [current.id]: e.target.value }));
                         }}

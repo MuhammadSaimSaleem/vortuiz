@@ -35,9 +35,10 @@ import {
   Shield,
   XCircle,
 } from "lucide-react";
-import { toPascalCase } from "@/lib/utils";
+import { difficultyConfig, toPascalCase } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
 import { Quiz, Subject } from "@/lib/data";
+import { COLOR_OPTIONS } from "../../subject-management/page";
 
 // Normalised quiz type with an attached subject object (from the join)
 type NormalisedQuiz = Omit<Partial<Quiz>, "subjects"> & {
@@ -76,20 +77,6 @@ function SubjectIcon({
   return <Icon className={className} />;
 }
 
-// ─── Difficulty helpers ───────────────────────────────────────────────────────
-function difficultyConfig(d: string | null): { label: string; color: string; bg: string } {
-  switch ((d ?? "").toLowerCase()) {
-    case "easy":
-      return { label: "Beginner", color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200" };
-    case "intermediate":
-      return { label: "Intermediate", color: "text-amber-700", bg: "bg-amber-50 border border-amber-200" };
-    case "hard":
-      return { label: "Advanced", color: "text-rose-700", bg: "bg-rose-50 border border-rose-200" };
-    default:
-      return { label: d ?? "Quiz", color: "text-slate-600", bg: "bg-slate-100" };
-  }
-}
-
 // ─── Error state ──────────────────────────────────────────────────────────────
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -117,12 +104,13 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
   const subject = quiz.subject;
   const diff = difficultyConfig(quiz.difficulty ?? null);
 
-  const cardHref = `/teachers/quiz/${quiz.id}/view`;
+  const viewHref = `/teachers/quiz/${quiz.id}/view`;
+  const resultHref = `/teachers/quiz/${quiz.id}/results`;
   const router = useRouter();
 
   function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("[data-cta]")) return;
-    router.push(cardHref);
+    router.push(viewHref);
   }
 
   // Status badge shown on the cover
@@ -140,23 +128,20 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
     </span>
   );
 
-  const coverGradient =
-    quiz.cover_gradient?.trim()
-      ? quiz.cover_gradient
-      : `bg-gradient-to-br from-slate-900 to-slate-700`;
+  const colorTheme = COLOR_OPTIONS.find((item) => item.value === quiz.color_theme)
 
   return (
     <div
       role="link"
       tabIndex={0}
       onClick={handleCardClick}
-      onKeyDown={(e) => { if (e.key === "Enter") router.push(cardHref); }}
+      onKeyDown={(e) => { if (e.key === "Enter") router.push(viewHref); }}
       className="group block rounded-2xl border border-border bg-white overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
   >
       {/* Cover */}
       <div
-        className={`relative h-28 bg-linear-to-br ${coverGradient} overflow-hidden`}
-        style={{ background: quiz.cover_gradient }}>
+        className={`relative h-28 ${colorTheme} overflow-hidden`}
+        style={{ background: quiz.color_theme }}>
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -194,7 +179,7 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
               {subject.name}
             </span>
           )}
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}>
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${diff.cls}`}>
             {diff.label}
           </span>
         </div>
@@ -243,9 +228,11 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
         </div>
 
         {/* CTA button */}
-        <div className="mt-auto" data-cta>
-          <Link href={cardHref}>
+        <div className="flex w-full gap-3" data-cta>
+          {/* First Button Link */}
+          <Link href={viewHref} className="flex-1">
             <Button
+              disabled={quiz.status === "unavailable"}
               className={`w-full rounded-xl font-bold text-xs h-9 gap-1.5 transition-all ${
                 quiz.status === "unavailable"
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -255,16 +242,26 @@ function QuizCard({ quiz }: { quiz: NormalisedQuiz }) {
               {quiz.status === "unavailable" ? (
                 <>
                   <XCircle className="h-3.5 w-3.5" />
-                  Unavailable
+                  <span className="capitalize">{quiz.status}</span>
                 </>
               ) : (
                 <>
                   <BarChart2 className="h-3.5 w-3.5" />
-                  View Quiz
+                  View Details
                 </>
               )}
             </Button>
           </Link>
+
+          {/* Second Button Link */}
+          {quiz.status === "published" && 
+            <Link href={resultHref} className="flex-1">
+              <Button className="w-full rounded-xl font-bold text-xs h-9 gap-1.5 transition-all bg-green-600 hover:bg-green-500 text-white hover:shadow-md hover:shadow-brand-navy/20">
+                <BarChart2 className="h-3.5 w-3.5" />
+                View Results
+              </Button>
+            </Link>
+          }
         </div>
       </div>
     </div>
@@ -323,59 +320,39 @@ export default function QuizPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCurrentFetch = true;
 
     async function fetchData() {
       setFetchError(null);
 
       try {
         if (!profile?.id) {
-          if (!cancelled) {
+          if (isCurrentFetch) {
             setQuizzes([]);
             setSubjects([]);
           }
           return;
         }
 
-        // 2. Fetch quizzes created by this teacher
         const { data: quizData, error: quizError } = await supabase
           .from("quizzes")
           .select(`
-            id,
-            name,
-            topics,
-            description,
-            difficulty,
-            duration_minutes,
-            total_marks,
-            passing_marks,
-            participant_count,
-            question_count,
-            status,
-            closed_at,
-            cover_gradient,
-            subject_id,
-            subjects (
-              id,
-              name,
-              slug,
-              icon_name,
-              color_theme
-            )
+            id, name, topics, description, difficulty, duration_minutes,
+            total_marks, passing_marks, participant_count, question_count,
+            status, closed_at, color_theme, subject_id,
+            subjects ( id, name, slug, icon_name, color_theme )
           `)
-          .eq("creator_id", profile?.id)
+          .eq("creator_id", profile.id)
           .order("created_at", { ascending: false });
 
         if (quizError) throw quizError;
 
-        // Supabase may return subjects as an array or a single object — normalise either
         function extractSubject(raw: unknown): Subject | null {
           if (!raw) return null;
           if (Array.isArray(raw)) return (raw[0] as Subject) ?? null;
           return raw as Subject;
         }
 
-        // Derive unique subjects from returned quizzes
         const subjectMap = new Map<string, Subject>();
         for (const q of quizData ?? []) {
           const s = extractSubject(q.subjects);
@@ -386,7 +363,7 @@ export default function QuizPage() {
           a.name.localeCompare(b.name)
         );
 
-        if (!cancelled) {
+        if (isCurrentFetch) {
           const normalizedQuizzes: NormalisedQuiz[] = (quizData ?? []).map((quiz) => {
             const quizRecord = quiz as Record<string, unknown>;
             const { subjects, ...rest } = quizRecord;
@@ -402,7 +379,7 @@ export default function QuizPage() {
         }
       } catch (err) {
         console.error("QuizPage fetch error:", err);
-        if (!cancelled) {
+        if (isCurrentFetch) {
           setFetchError(
             err instanceof Error
               ? err.message
@@ -413,9 +390,11 @@ export default function QuizPage() {
       }
     }
 
-    if (profile?.id) fetchData();
+    // DO NOT call setLoading(true) synchronously here anymore.
+    fetchData();
+
     return () => {
-      cancelled = true;
+      isCurrentFetch = false;
     };
   }, [profile?.id, retryCount]);
 
@@ -617,7 +596,7 @@ export default function QuizPage() {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} />
+                  <QuizCard key={quiz.id} quiz={quiz}/>
                 ))}
               </div>
             </>

@@ -277,7 +277,7 @@ export default function PerformancePage() {
             <h1 className="text-3xl font-bold text-brand-dark tracking-tight">Performance Analytics</h1>
           </div>
           <p className="text-sm text-brand-subtitle">
-            Welcome back, <span className="font-bold text-brand-dark">Alex Johnson</span>. You are currently ranked in the top 5% of learners this semester.
+            You are currently ranked in the top 5% of learners this semester.
           </p>
         </div>
 

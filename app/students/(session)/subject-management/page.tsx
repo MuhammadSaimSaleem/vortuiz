@@ -27,7 +27,6 @@ import {
   Filter,
   ListFilter,
   Pencil,
-  Plus,
   TrendingUp,
   Trash2,
 } from "lucide-react";
@@ -43,22 +42,6 @@ interface Subject {
   color: string; // tailwind bg color class
   textColor: string;
 }
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const ALL_SUBJECTS: Subject[] = [
-  { id: "1", name: "Mathematics", category: "Science & Engineering", code: "MATH-101", quizCount: 42, lastUpdated: "Oct 24, 2023", color: "bg-blue-100", textColor: "text-blue-700" },
-  { id: "2", name: "Biology", category: "Life Sciences", code: "BIOL-204", quizCount: 28, lastUpdated: "Nov 02, 2023", color: "bg-green-100", textColor: "text-green-700" },
-  { id: "3", name: "Physics", category: "Science & Engineering", code: "PHYS-102", quizCount: 35, lastUpdated: "Oct 28, 2023", color: "bg-purple-100", textColor: "text-purple-700" },
-  { id: "4", name: "Computer Science", category: "Information Technology", code: "CSCI-301", quizCount: 51, lastUpdated: "Nov 15, 2023", color: "bg-amber-100", textColor: "text-amber-700" },
-  { id: "5", name: "Chemistry", category: "Life Sciences", code: "CHEM-201", quizCount: 19, lastUpdated: "Oct 30, 2023", color: "bg-rose-100", textColor: "text-rose-700" },
-  { id: "6", name: "History", category: "Humanities", code: "HIST-110", quizCount: 23, lastUpdated: "Nov 05, 2023", color: "bg-orange-100", textColor: "text-orange-700" },
-  { id: "7", name: "Literature", category: "Humanities", code: "LIT-202", quizCount: 14, lastUpdated: "Nov 08, 2023", color: "bg-teal-100", textColor: "text-teal-700" },
-  { id: "8", name: "Economics", category: "Social Sciences", code: "ECON-301", quizCount: 31, lastUpdated: "Nov 12, 2023", color: "bg-indigo-100", textColor: "text-indigo-700" },
-  { id: "9", name: "Geography", category: "Social Sciences", code: "GEO-105", quizCount: 17, lastUpdated: "Nov 01, 2023", color: "bg-cyan-100", textColor: "text-cyan-700" },
-  { id: "10", name: "Art & Design", category: "Creative Arts", code: "ART-150", quizCount: 9, lastUpdated: "Oct 20, 2023", color: "bg-pink-100", textColor: "text-pink-700" },
-  { id: "11", name: "Music Theory", category: "Creative Arts", code: "MUS-110", quizCount: 12, lastUpdated: "Oct 22, 2023", color: "bg-violet-100", textColor: "text-violet-700" },
-  { id: "12", name: "Physical Education", category: "Health & Sports", code: "PE-101", quizCount: 7, lastUpdated: "Oct 19, 2023", color: "bg-lime-100", textColor: "text-lime-700" },
-];
 
 const PAGE_SIZE = 4;
 
@@ -158,14 +141,14 @@ function SubjectRow({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SubjectManagementPage() {
-  const [subjects, setSubjects] = useState<Subject[]>(ALL_SUBJECTS);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [sortOrder, setSortOrder] = useState<"name" | "quizzes" | "updated">("name");
 
   const totalSubjects = subjects.length;
   const totalQuizzes = subjects.reduce((sum, s) => sum + s.quizCount, 0);
-  const totalPages = Math.ceil(totalSubjects / PAGE_SIZE);
+  const totalPages = totalSubjects === 0 ? 1 : Math.ceil(totalSubjects / PAGE_SIZE);
 
   const sorted = [...subjects].sort((a, b) => {
     if (sortOrder === "quizzes") return b.quizCount - a.quizCount;
@@ -181,7 +164,7 @@ export default function SubjectManagementPage() {
     toast.success(`"${deleteTarget.name}" deleted`);
     setDeleteTarget(null);
     // reset to last valid page if needed
-    const newTotal = subjects.length - 1;
+    const newTotal = subjects?.length - 1;
     const newPages = Math.ceil(newTotal / PAGE_SIZE);
     if (page > newPages) setPage(Math.max(1, newPages));
   };
@@ -196,13 +179,6 @@ export default function SubjectManagementPage() {
             <h1 className="text-2xl font-bold text-brand-navy">Subject Management</h1>
             <p className="text-sm text-slate-400 mt-1">Organize and manage your academic curriculum and quiz banks.</p>
           </div>
-          <Button
-            className="bg-brand-navy hover:bg-brand-blue text-white font-bold text-sm h-10 px-5 rounded-xl transition-colors shrink-0"
-            onClick={() => toast.info("Add New Subject clicked")}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add New Subject
-          </Button>
         </div>
 
         {/* Stat Cards */}
@@ -299,20 +275,27 @@ export default function SubjectManagementPage() {
           </div>
 
           {/* Rows */}
-          {paginated.map((subject) => (
-            <SubjectRow
-              key={subject.id}
-              subject={subject}
-              onEdit={(s) => toast.info(`Edit "${s.name}"`)}
-              onDelete={(s) => setDeleteTarget(s)}
-            />
-          ))}
+          {totalSubjects < 1 ? (
+              <div className="col-span-2 rounded-2xl border border-dashed border-border bg-white p-8 text-center text-slate-400 text-sm">
+                <span className="block">You&apos;re currently enrolled in no subjects</span>
+                <span>Request your teacher to enroll you</span>
+              </div>
+            ) : (
+              paginated.map((subject) => (
+                <SubjectRow
+                  key={subject.id}
+                  subject={subject}
+                  onEdit={(s) => toast.info(`Edit "${s.name}"`)}
+                  onDelete={(s) => setDeleteTarget(s)}
+                />
+            ))
+          )}
 
           {/* Pagination */}
           <div className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
+              disabled={totalPages === 1 || totalPages === 0}
               className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-brand-navy hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors"
               aria-label="Previous page"
             >

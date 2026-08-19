@@ -336,7 +336,7 @@ function CTA() {
               <Button asChild className="bg-white text-brand-navy hover:bg-blue-50 font-semibold px-6 h-11 rounded-xl text-sm transition-colors">
                 <Link href={'/auth'}>Start Your Journey Today</Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/30 text-white hover:text-white hover:bg-white/10 font-semibold px-6 h-11 rounded-xl text-sm">
+              <Button asChild variant="outline" className="border-white/30 text-brand-navy bg-white hover:text-white hover:bg-white/10 font-semibold px-6 h-11 rounded-xl text-sm">
                 <Link href={'/auth'}>Schedule a Demo</Link>
               </Button>
             </div>

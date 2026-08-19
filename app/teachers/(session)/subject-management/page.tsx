@@ -65,6 +65,8 @@ import {
   ScrollText,
   TrendingUp,
   Trash2,
+  Scroll,
+  Book,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,9 +132,7 @@ function getIconComponent(iconName?: string | null) {
 }
 
 // ─── Color options ────────────────────────────────────────────────────────────
-// NOTE: classes are written out in full (not interpolated) so Tailwind's
-// content scanner can pick them up at build time.
-const COLOR_OPTIONS: {
+export const COLOR_OPTIONS: {
   value: string;
   label: string;
   bg: string;
@@ -251,7 +251,7 @@ function IconPicker({
 }
 
 // ─── Color Picker ─────────────────────────────────────────────────────────────
-function ColorPicker({
+export function ColorPicker({
   value,
   onChange,
 }: {
@@ -475,8 +475,8 @@ function SubjectFormDialog({
                 id="subject-code"
                 placeholder="e.g. MATH-101"
                 value={values.code}
-                onChange={(e) => setValues((v) => ({ ...v, code: e.target.value }))}
-                className="rounded-xl font-mono"
+                onChange={(e) => setValues((v) => ({ ...v, code: e.target.value.toUpperCase() }))}
+                className="rounded-xl font-mono uppercase"
               />
             </div>
             <div className="space-y-1.5">
@@ -738,26 +738,20 @@ export default function SubjectManagementPage() {
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<BookOpen className="h-5 w-5 text-slate-500" />}
+            icon={<Book className="h-5 w-5 text-slate-500" />}
             label="Total Subjects"
             value={loading ? "—" : totalSubjects}
           />
           <StatCard
-            icon={
-              <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-              </svg>
-            }
+            icon={<Scroll className="h-5 w-5 text-slate-500" />}
+            
             label="Total Quizzes"
             value={loading ? "—" : totalQuizzes}
           />
           <StatCard
             icon={<TrendingUp className="h-5 w-5 text-orange-500" />}
             label="Active Engagement"
-            value="+24%"
+            value="Currently None"
             accent
           />
         </div>

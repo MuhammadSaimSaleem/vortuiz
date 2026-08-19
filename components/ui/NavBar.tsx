@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { useTheme } from "next-themes";
 import { Button } from "./button";
@@ -24,6 +23,9 @@ import {
   Moon,
   Laptop,
 } from "lucide-react";
+import { useProfile } from "@/contexts/ProfileContext";
+import { Profile } from "@/lib/data";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Features", href: "/features" },
@@ -33,11 +35,12 @@ const navItems = [
 ];
 
 // ─── Profile Dropdown ─────────────────────────────────────────────────────────
-function ProfileMenu({ user, role, onLogout }: { user: User; role: string | null; onLogout: () => void }) {
+function ProfileMenu({ profile, onLogout }: { profile: Profile; onLogout: () => void }) {
   const { setTheme } = useTheme();
-  const avatarUrl = (user.user_metadata as { avatar_url?: string })?.avatar_url;
-  const email = user.email ?? "educator@vortuiz.com";
-  const initial = email.charAt(0).toUpperCase();
+  const avatarUrl = profile.avatar_url ?? undefined;
+  const email = profile.email ?? "educator@vortuiz.com";
+  const initial = (profile.full_name?.charAt(0) ?? email.charAt(0)).toUpperCase();
+  const role = profile.role;
 
   return (
     <DropdownMenu modal={false}>
@@ -135,10 +138,9 @@ function ProfileMenu({ user, role, onLogout }: { user: User; role: string | null
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null); // Added state for user role
-  const [loading, setLoading] = useState(true);
+  const { profile, isLoading } = useProfile();
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   // Scroll shadow
   useEffect(() => {
@@ -147,48 +149,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  // Auth session & Profile role fetching
-  useEffect(() => {
-    const fetchProfileRole = async (userId: string) => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .single(); // Use single() since one user has one profile
-
-      if (!error && data) {
-        setRole(data.role);
-      }
-    };
-
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await fetchProfileRole(session.user.id);
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await fetchProfileRole(session.user.id);
-        } else {
-          setUser(null);
-          setRole(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -221,8 +181,8 @@ export default function Navbar() {
 
         {/* Auth controls */}
         <div className="flex items-center gap-3">
-          {!loading && (
-            user ? (
+          {pathname !== "/auth" && !isLoading && (
+            profile ? (
               <>
                 <Button
                   asChild
@@ -230,12 +190,12 @@ export default function Navbar() {
                   className="hidden sm:flex bg-brand-navy hover:bg-brand-blue text-white font-semibold rounded-lg text-sm gap-1.5 h-9 px-4 transition-colors"
                 >
                   {/* Safely fallback to /dashboard if role hasn't loaded yet */}
-                  <Link href={`/${role}s/dashboard`}>
+                  <Link href={`/${profile.role}s/dashboard`}>
                     <LayoutDashboard className="h-3.5 w-3.5" />
                     Dashboard
                   </Link>
                 </Button>
-                <ProfileMenu user={user} role={role} onLogout={handleLogout} />
+                <ProfileMenu profile={profile} onLogout={handleLogout} />
               </>
             ) : (
               <>

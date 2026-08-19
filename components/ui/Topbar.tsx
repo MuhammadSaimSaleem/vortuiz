@@ -17,57 +17,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import NotificationDropdown from "./NotificationModal";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client"; 
 import { useRouter } from "next/navigation";
-
-// Define the type according to your PostgreSQL schema
-interface Profile {
-  id: string;
-  full_name: string | null;
-  email: string;
-  avatar_url: string | null;
-  avatar_initials: string | null;
-}
+import { useProfile } from "@/contexts/ProfileContext";
 
 export default function TopBar() {
+  const { profile, isLoading } = useProfile();
+
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const router = useRouter();
-
-  useEffect(() => {
-    async function fetchUserProfile() {
-      try {
-        // 2. Get the currently logged-in auth user session
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) return;
-
-        // 3. Fetch the matching row from your public.profiles table
-        const { data, error: profileError } = await supabase
-          .from("profiles")
-          .select("full_name, email, avatar_url, avatar_initials")
-          .eq("id", user.id)
-          .single();
-
-        if (!profileError && data) {
-          setProfile({
-            ...data,
-            id: user.id
-          })
-        }
-      } catch (error) {
-        console.error("Error loading user profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchUserProfile();
-  }, [supabase]);
 
   // Fallbacks if data is loading or fields are null
   const displayName = profile?.full_name || "User";
@@ -118,7 +79,7 @@ export default function TopBar() {
             <div className="flex items-center gap-3 cursor-pointer group">
               <Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-brand-blue transition-all">
                 {/* Render the image if the database has a URL and we aren't loading */}
-                {!loading && profile?.avatar_url && (
+                {!isLoading && profile?.avatar_url && (
                   <AvatarImage 
                     src={profile.avatar_url} 
                     alt={displayName} 
@@ -128,7 +89,7 @@ export default function TopBar() {
                 )}
                 {/* Fallback displays initials safely */}
                 <AvatarFallback className="bg-brand-navy text-white text-xs font-bold">
-                  {loading ? "..." : initials}
+                  {isLoading ? "..." : initials}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -136,7 +97,7 @@ export default function TopBar() {
           
           <DropdownMenuContent align="end" className="w-46 mt-2">
             <DropdownMenuLabel className="font-semibold truncate max-w-45">
-              {loading ? "Loading..." : displayName}
+              {isLoading ? "Loading..." : displayName}
             </DropdownMenuLabel>  
             <DropdownMenuSeparator />
             <Link href={"/profile"}>

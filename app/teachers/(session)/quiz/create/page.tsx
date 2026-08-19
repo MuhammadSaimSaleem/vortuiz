@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "@/lib/toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +41,6 @@ import {
   ArrowLeft,
   BarChart2,
   CheckCircle2,
-  CheckSquare,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -70,6 +68,9 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Quiz, Subject } from "@/lib/data";
 import { useQuery } from "@tanstack/react-query";
+import { SubjectIcon } from "@/lib/utils";
+import Link from "next/link";
+import { ColorPicker } from "../../subject-management/page";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type QuestionType = "MULTIPLE CHOICE" | "TRUE / FALSE" | "SHORT ANSWER";
@@ -89,24 +90,6 @@ interface Question {
   required: boolean;
   collapsed: boolean;
   options: Option[];
-}
-
-// ─── icon_name → Lucide icon map ─────────────────────────────────────────────
-function SubjectIcon({ icon_name, className }: { icon_name: string | null; className?: string }) {
-  // We keep a small runtime map to avoid importing every icon
-  const icons: Record<string, React.ReactNode> = {
-    "bar-chart":   <BarChart2    className={className ?? "h-6 w-6"} />,
-    "check-square":<CheckSquare  className={className ?? "h-6 w-6"} />,
-    "align-left":  <AlignLeft    className={className ?? "h-6 w-6"} />,
-    "list":        <List          className={className ?? "h-6 w-6"} />,
-    "star":        <Star          className={className ?? "h-6 w-6"} />,
-    "target":      <Target        className={className ?? "h-6 w-6"} />,
-    "sparkles":    <Sparkles      className={className ?? "h-6 w-6"} />,
-    "settings":    <Settings      className={className ?? "h-6 w-6"} />,
-    "search":      <Search        className={className ?? "h-6 w-6"} />,
-    "clock":       <Clock         className={className ?? "h-6 w-6"} />,
-  };
-  return <>{icons[icon_name ?? ""] ?? <LayoutList className={className ?? "h-6 w-6"} />}</>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -225,7 +208,10 @@ function SubjectSelectionScreen({
       ) : subjectsData.length === 0 ? (
         /* Empty State */
         <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
-          <p className="text-sm font-medium text-brand-subtitle">No subjects match &ldquo;{search}&rdquo;</p>
+          <p className="text-sm font-medium text-brand-subtitle">No subjects found.</p>
+          <p className="text-sm font-medium text-brand-subtitle">You can create one here:
+            <Link href={"/teachers/subject-management"} className="text-brand-navy font-bold"> Subject Management</Link>
+          </p>
         </div>
       ) : (
         /* Actual Subject Grid Data */
@@ -245,7 +231,7 @@ function SubjectSelectionScreen({
               >
                 <div className={`w-full aspect-square rounded-xl ${bg} flex items-center justify-center mb-4 transition-transform duration-200 ${isHovered ? "scale-105" : ""}`}>
                   <span className={iconColor}>
-                    <SubjectIcon icon_name={subject.icon_name} className="h-6 w-6" />
+                    <SubjectIcon iconName={subject.icon_name} size={28} />
                   </span>
                 </div>
                 <p className={`text-sm font-bold text-center transition-colors ${isHovered ? "text-brand-navy" : "text-slate-600"}`}>
@@ -351,7 +337,7 @@ function QuizStatsPanel({ questions, onGenerate, estimatedMins, timeLimit, total
 
       {/* Collaborators */}
       <div className="rounded-2xl border border-border bg-white p-5">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <p className="text-[11px] font-bold uppercase tracking-widest text-brand-subtitle">Collaborators</p>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -362,22 +348,8 @@ function QuizStatsPanel({ questions, onGenerate, estimatedMins, timeLimit, total
             <TooltipContent className="bg-brand-navy text-white border-none text-xs">Invite collaborator</TooltipContent>
           </Tooltip>
         </div>
-        <div className="flex -space-x-2">
-          {(["BG", "MT", "SK"] as const).map((initials, i) => (
-            <Tooltip key={initials}>
-              <TooltipTrigger asChild>
-                <Avatar className="h-8 w-8 border-2 border-white cursor-pointer">
-                  <AvatarFallback className={`text-[10px] font-bold text-white ${["bg-brand-navy","bg-purple-500","bg-emerald-600"][i]}`}>
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </TooltipTrigger>
-              <TooltipContent className="bg-brand-navy text-white border-none text-xs">{initials}</TooltipContent>
-            </Tooltip>
-          ))}
-          <div className="h-8 w-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center">
-            <span className="text-[10px] font-bold text-brand-subtitle">+2</span>
-          </div>
+        <div className="flex tracking-wide">
+          <p className="text-xs text-brand-subtitle">Coming Soon!</p>
         </div>
       </div>
     </div>
@@ -424,7 +396,7 @@ function QuestionCard({
         <div className="flex items-center gap-3 w-full">
           <div className="flex-1 min-w-0">
             {question.collapsed ? (
-              <p className="text-sm font-semibold text-brand-navy truncate">{question.text || "Untitled question"}</p>
+              <p className="text-sm font-semibold text-brand-navy truncate w-150">{question.text || "Untitled question"}</p>
             ) : (
               <Input value={question.text}
                 onChange={e => onUpdateQuestionText(question.id, e.target.value)}
@@ -604,13 +576,14 @@ export default function QuizBuilderPage() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // quiz settings
-  const [quiz, setquiz] = useState<Partial<Quiz>>({
+  const [quiz, setQuiz] = useState<Partial<Quiz>>({
     name: "",
     topics: "",
     description: "",
     duration_minutes: 30,
     passing_marks: 0,
     grading_type: "standard",
+    color_theme: "slate",
   });
   const [coverImage,  setCoverImage]  = useState<string | null>(null);
 
@@ -621,6 +594,7 @@ export default function QuizBuilderPage() {
   const [showClearDialog,   setShowClearDialog]   = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const coverRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
@@ -681,9 +655,76 @@ export default function QuizBuilderPage() {
     toast("Cover image uploaded");
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!(quiz.name ?? "").trim()) { toast("Please add a quiz title before saving.", "error"); return; }
-    toast("Draft saved successfully!");
+    if (isSavingDraft) return;
+    setIsSavingDraft(true);
+
+    try {
+      const topicsArray = (quiz.topics ?? "")
+        ? (quiz.topics ?? "").split(",").map(t => t.trim()).filter(Boolean)
+        : [];
+
+      const { label } = getDifficulty(estimatedMins, quiz.duration_minutes ?? 30);
+
+      if (profile) {
+        const insertPayload = {
+          creator_id: profile?.id,
+          subject_id: selectedSubject?.id,
+          name: quiz.name ?? "",
+          topics: topicsArray,
+          description: quiz?.description ?? "",
+          duration_minutes: quiz?.duration_minutes ?? 30,
+          color_theme: quiz.color_theme,
+          grading_type: quiz?.grading_type ?? "standard",
+          question_count: questions.length,
+          difficulty: label.toLowerCase(),
+          status: 'draft',
+          total_marks: totalMarks,
+          passing_marks: quiz?.passing_marks ?? 0,
+        };
+
+        const { data: quizInsert, error: quizError } = await supabase
+          .from('quizzes')
+          .insert(insertPayload)
+          .select()
+          .single();
+
+        if (quizError) throw new Error(`quiz insert failed: ${quizError.message} (code: ${quizError.code})`);
+
+        const typeMap: Record<QuestionType, string> = {
+          "MULTIPLE CHOICE": "multiple-choice",
+          "TRUE / FALSE":    "true-false",
+          "SHORT ANSWER":    "short-answer",
+        };
+
+        if (questions.length > 0) {
+          const questionsPayload = questions.map((q, i) => ({
+            quiz_id:     quizInsert.id,
+            question:    q.text,
+            type:        typeMap[q.type],
+            order_index: i,
+            marks:       q.marks,
+            options: q.options.map((o: Option) => o.text),
+            answer:  q.options.find((o: Option) => o.correct)?.text ?? null,
+          }));
+
+          const { error: questionError } = await supabase
+            .from('questions')
+            .insert(questionsPayload);
+
+          if (questionError) throw new Error(`Questions insert failed: ${questionError.message} (code: ${questionError.code})`);
+        }
+
+        toast("Draft saved successfully!");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      toast(`Failed to save draft: ${message}`, "error");
+      console.error("[save draft] error:", err);
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const handlePublishClick = () => {
@@ -725,7 +766,8 @@ export default function QuizBuilderPage() {
           name: quiz.name ?? "",
           topics: topicsArray,
           description: quiz?.description ?? "",
-          time_limit: quiz?.duration_minutes ?? 30,
+          duration_minutes: quiz?.duration_minutes ?? 30,
+          color_theme: quiz.color_theme,
           grading_type: quiz?.grading_type ?? "standard",
           question_count: questions.length,
           difficulty: label.toLowerCase(),
@@ -764,7 +806,7 @@ export default function QuizBuilderPage() {
 
         if (questionError) throw new Error(`Questions insert failed: ${questionError.message} (code: ${questionError.code})`);
 
-        toast("quiz published! Share the join code with your students.", "success");
+        toast("Quiz published! Share the join code with your students.", "success");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
@@ -892,9 +934,9 @@ export default function QuizBuilderPage() {
             ))}
             {step === 'builder' ? (
               <div className="flex ml-auto gap-2">
-                <Button variant="ghost" size="sm" onClick={handleSaveDraft}
+                <Button variant="ghost" size="sm" onClick={handleSaveDraft} disabled={isSavingDraft}
                   className="text-sm font-semibold text-slate-600 h-9 hover:text-brand-navy">
-                  Save Draft
+                  {isSavingDraft ? "Saving…" : "Save Draft"}
                 </Button>
                 <Button size="sm" onClick={handlePublishClick} disabled={isPublishing}
                   className="bg-brand-navy mr-4 hover:bg-brand-blue text-white font-semibold text-sm h-9 px-5 rounded-xl transition-colors">
@@ -946,7 +988,7 @@ export default function QuizBuilderPage() {
                   return (
                     <div className={`flex items-center gap-2.5 rounded-xl border border-border px-3 py-2 ${bg} shrink-0`}>
                       <span className={iconColor}>
-                        <SubjectIcon icon_name={selectedSubject.icon_name} className="h-4 w-4" />
+                        <SubjectIcon iconName={selectedSubject.icon_name} size={20}/>
                       </span>
                       <span className={`text-xs font-bold ${iconColor}`}>{selectedSubject.name}</span>
                     </div>
@@ -964,19 +1006,19 @@ export default function QuizBuilderPage() {
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Title</Label>
-                      <Input value={quiz.name ?? ""} onChange={e => setquiz({...quiz, name: e.target.value})}
+                      <Input value={quiz.name ?? ""} onChange={e => setQuiz({...quiz, name: e.target.value})}
                         placeholder="Enter quiz title"
                         className="h-10 text-sm border-border focus-visible:ring-brand-blue rounded-xl" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Topics</Label>
-                      <Textarea value={quiz.topics ?? ""} onChange={e => setquiz({...quiz, topics: e.target.value})}
+                      <Textarea value={quiz.topics ?? ""} onChange={e => setQuiz({...quiz, topics: e.target.value})}
                         placeholder="Include the topics this quiz covers e.g ICT, DSA, OOP"
                         rows={4} className="text-sm border-border focus-visible:ring-brand-blue rounded-xl resize-none" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Description</Label>
-                      <Textarea value={quiz?.description ?? ""} onChange={e => setquiz({...quiz, description: e.target.value})}
+                      <Textarea value={quiz?.description ?? ""} onChange={e => setQuiz({...quiz, description: e.target.value})}
                         placeholder="Describe what this quiz is about"
                         rows={4} className="text-sm border-border focus-visible:ring-brand-blue rounded-xl resize-none" />
                     </div>
@@ -986,7 +1028,7 @@ export default function QuizBuilderPage() {
                         <div className="flex items-center gap-2 h-10 border border-border rounded-xl px-3 bg-white">
                           <Clock className="h-3.5 w-3.5 text-brand-subtitle shrink-0" />
                           <input type="number" min={1} max={160} value={quiz?.duration_minutes ?? 30}
-                            onChange={e => setquiz({...quiz, duration_minutes: Math.max(1, parseInt(e.target.value) || 1)})}
+                            onChange={e => setQuiz({...quiz, duration_minutes: Math.max(1, parseInt(e.target.value) || 1)})}
                             className="flex-1 text-sm border-0 p-0 bg-transparent focus:outline-none" />
                         </div>
                       </div>
@@ -998,10 +1040,10 @@ export default function QuizBuilderPage() {
                             onChange={e => {
                               const val = parseInt(e.target.value);
                               if (isNaN(val)) {
-                                setquiz({...quiz, passing_marks: 0});
+                                setQuiz({...quiz, passing_marks: 0});
                               } else {
                                 const clampedValue = Math.max(0, Math.min(val, totalMarks));
-                                setquiz({...quiz, passing_marks: clampedValue});
+                                setQuiz({...quiz, passing_marks: clampedValue});
                               }
                             }}
                             className="flex-1 text-sm border-0 p-0 bg-transparent focus:outline-none" />
@@ -1026,7 +1068,7 @@ export default function QuizBuilderPage() {
                             <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                               <span className="text-white text-xs font-semibold flex items-center gap-1.5">
                                 <Upload className="h-3.5 w-3.5" /> Change image
-                              </span>
+                              </span>A
                             </div>
                           </>
                         ) : (
@@ -1034,16 +1076,17 @@ export default function QuizBuilderPage() {
                             <div className="h-10 w-10 rounded-xl bg-brand-light flex items-center justify-center">
                               <Plus className="h-5 w-5 text-brand-blue" />
                             </div>
-                            <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image</p>
+                            <p className="text-xs text-brand-subtitle font-medium text-center px-4">Click to upload cover image or select a color theme.</p>
                           </>
                         )}
                         
                       </div>
-                      <p className="text-xs text-brand-subtitle font-medium text-center px-4">*Note: If there&apos;s no cover image, a random cover gradient will be assigned.</p>
+                      <p className="text-xs text-brand-subtitle font-medium text-center px-4 mb-1">OR</p>
                     </div>
+                    <ColorPicker value={quiz.color_theme ?? "slate"} onChange={(color) => setQuiz(prev => ({ ...prev, color_theme: color }))} />
                     <div className="space-y-1.5 mt-auto">
                       <Label className="text-xs font-semibold text-brand-subtitle uppercase tracking-wider">Grading</Label>
-                      <Select value={quiz?.grading_type ?? "standard"} onValueChange={v => setquiz({...quiz, grading_type: v})}>
+                      <Select value={quiz?.grading_type ?? "standard"} onValueChange={v => setQuiz({...quiz, grading_type: v})}>
                         <SelectTrigger className="h-10 w-full text-sm border-border rounded-xl focus:ring-brand-blue">
                           <div className="flex items-center gap-2">
                             <Star className="h-3.5 w-3.5 text-brand-subtitle" />

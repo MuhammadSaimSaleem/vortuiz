@@ -30,10 +30,16 @@ import {
   Check,
   AlertTriangle,
   X,
+  ListChecks,
+  ToggleLeft,
+  MessageSquareText,
+  Hash,
+  ChevronDown,
 } from "lucide-react";
-import { toPascalCase } from "@/lib/utils";
+import { difficultyConfig, toPascalCase } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
 import { Quiz } from "@/lib/data";
+import { toast } from "@/lib/toast";
 
 function SubjectIcon({ iconName, size = 18, className = "" }: { iconName: string | null; size?: number; className?: string }) {
   if (!iconName) return <HelpCircle size={size} className={className || "text-slate-400"} />;
@@ -50,13 +56,45 @@ function SubjectIcon({ iconName, size = 18, className = "" }: { iconName: string
   return <Icon size={size} className={className} />;
 }
 
-// ─── Difficulty config ────────────────────────────────────────────────────────
-function difficultyConfig(d: string | null) {
-  switch ((d ?? "").toLowerCase()) {
-    case "beginner":     return { label: "Beginner",     cls: "bg-emerald-100 text-emerald-700" };
-    case "intermediate": return { label: "Intermediate", cls: "bg-amber-100 text-amber-700" };
-    case "advanced":     return { label: "Advanced",     cls: "bg-rose-100 text-rose-700" };
-    default:             return { label: d ?? "Quiz",    cls: "bg-slate-100 text-slate-600" };
+// ─── Question types ────────────────────────────────────────────────────────────
+interface QuestionOption {
+  text?: string;
+  label?: string;
+  value?: string;
+}
+
+interface Question {
+  id: string;
+  quiz_id: string;
+  question: string;
+  type: string;
+  order_index: number;
+  marks: number;
+  options: (string | QuestionOption)[] | null;
+  answer: string | null;
+}
+
+function optionLabel(opt: string | QuestionOption): string {
+  if (typeof opt === "string") return opt;
+  return opt.text ?? opt.label ?? opt.value ?? "";
+}
+
+function questionTypeConfig(type: string) {
+  switch ((type ?? "").toLowerCase()) {
+    case "mcq":
+    case "multiple-choice":
+      return { label: "Multiple Choice", icon: <ListChecks className="h-3.5 w-3.5" />, cls: "text-indigo-600 bg-indigo-50" };
+    case "true-false":
+    case "boolean":
+      return { label: "True / False", icon: <ToggleLeft className="h-3.5 w-3.5" />, cls: "text-blue-600 bg-blue-50" };
+    case "short-answer":
+    case "text":
+      return { label: "Short Answer", icon: <MessageSquareText className="h-3.5 w-3.5" />, cls: "text-orange-600 bg-orange-50" };
+    case "numeric":
+    case "number":
+      return { label: "Numeric", icon: <Hash className="h-3.5 w-3.5" />, cls: "text-purple-600 bg-purple-50" };
+    default:
+      return { label: type || "Question", icon: <HelpCircle className="h-3.5 w-3.5" />, cls: "text-slate-500 bg-slate-100" };
   }
 }
 
@@ -112,6 +150,10 @@ export default function TeacherQuizDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
 
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
+
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -143,7 +185,7 @@ export default function TeacherQuizDetailPage() {
               status,
               question_count,
               participant_count,
-              cover_gradient,
+              color_theme,
               created_at,
               closed_at,
               subjects (
@@ -179,6 +221,31 @@ export default function TeacherQuizDetailPage() {
     return () => { cancelled = true; };
   }, [quizId, profile?.id]);
 
+  useEffect(() => {
+    if (!quizId) return;
+    let cancelled = false;
+
+    async function fetchQuestions() {
+      try {
+        const { data, error } = await supabase
+          .from("questions")
+          .select("id, quiz_id, question, type, order_index, marks, options, answer")
+          .eq("quiz_id", quizId)
+          .order("order_index", { ascending: true });
+
+        if (error) throw error;
+        if (!cancelled) setQuestions((data ?? []) as Question[]);
+      } catch (err) {
+        console.error("Fetch questions error:", err);
+      } finally {
+        if (!cancelled) setQuestionsLoading(false);
+      }
+    }
+
+    fetchQuestions();
+    return () => { cancelled = true; };
+  }, [quizId]);
+
   async function handlePublish() {
     if (!quiz) return;
     setActionError(null);
@@ -191,6 +258,7 @@ export default function TeacherQuizDetailPage() {
         .eq("creator_id", profile?.id);
       if (error) throw error;
       setQuiz({ ...quiz, status: "published" });
+      toast("Quiz Published Successfully!", "success")
     } catch (err) {
       console.error("Publish quiz error:", err);
       setActionError("Couldn't publish the quiz. Please try again.");
@@ -247,7 +315,7 @@ export default function TeacherQuizDetailPage() {
       {/* Back breadcrumb */}
       <div className="px-6 pt-5 pb-0">
         <button
-          onClick={() => router.push('/teachers/quiz/view')}
+          onClick={() => router.back()}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-sub hover:text-brand-navy transition-colors group"
         >
           <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
@@ -273,7 +341,7 @@ export default function TeacherQuizDetailPage() {
             <div className="rounded-2xl overflow-hidden border border-border">
               <div
                 className="relative h-52"
-                style={quiz.cover_gradient ? { background: quiz.cover_gradient } : undefined}
+                style={quiz.color_theme ? { background: quiz.color_theme } : undefined}
               >
                 {/* Decorative blobs */}
                 <div className="absolute inset-0 pointer-events-none">
@@ -319,10 +387,10 @@ export default function TeacherQuizDetailPage() {
               <div className="bg-white px-5 py-3 flex items-center gap-3 border-t border-border">
                 <div
                   className="h-7 w-7 rounded-lg shrink-0 border border-border"
-                  style={quiz.cover_gradient ? { background: quiz.cover_gradient } : undefined}
+                  style={quiz.color_theme ? { background: quiz.color_theme } : undefined}
                 />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Description</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{!quiz.description && "No"} Description</p>
                   <p className="text-xs font-medium text-slate-600">
                     {quiz.description}
                   </p>
@@ -345,9 +413,9 @@ export default function TeacherQuizDetailPage() {
 
               {isPublished && (
                 <Link href={resultsHref} className="block">
-                  <Button className="w-full bg-brand-navy hover:bg-brand-blue text-white rounded-xl font-bold text-sm h-11 gap-2 transition-all hover:shadow-lg hover:shadow-brand-navy/20">
+                  <Button className="w-full bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm h-11 gap-2 transition-all hover:shadow-lg hover:shadow-brand-navy/20">
                     <BarChart3 className="h-4 w-4" />
-                    View Quiz
+                    View Results
                   </Button>
                 </Link>
               )}
@@ -481,6 +549,122 @@ export default function TeacherQuizDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Questions */}
+            <div className="rounded-2xl border border-border bg-white p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Questions</p>
+                <span className="text-xs font-semibold text-slate-400">
+                  {questionsLoading ? "Loading…" : `${questions.length} question${questions.length === 1 ? "" : "s"}`}
+                </span>
+              </div>
+
+              {questionsLoading && (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                  ))}
+                </div>
+              )}
+
+              {!questionsLoading && questions.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <p className="text-sm text-slate-500">No questions added yet.</p>
+                  {isDraft && (
+                    <Link href={editHref} className="text-xs font-semibold text-brand-navy hover:underline">
+                      Add questions
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {!questionsLoading && questions.length > 0 && (
+                <div className="space-y-2.5">
+                  {questions.map((q, i) => {
+                    const typeInfo = questionTypeConfig(q.type);
+                    const isOpen = openQuestionId === q.id;
+                    const hasOptions = Array.isArray(q.options) && q.options.length > 0;
+
+                    return (
+                      <div key={q.id} className="rounded-xl border border-border overflow-hidden">
+                        <button
+                          onClick={() => setOpenQuestionId(isOpen ? null : q.id)}
+                          className="w-full flex items-start gap-3 p-3.5 text-left hover:bg-slate-50 transition-colors"
+                        >
+                          <span className="h-6 w-6 shrink-0 rounded-full bg-brand-light text-brand-navy text-[11px] font-bold flex items-center justify-center mt-0.5">
+                            {q.order_index ?? i + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-brand-dark leading-snug">{q.question}</p>
+                            <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${typeInfo.cls}`}>
+                                {typeInfo.icon}
+                                {typeInfo.label}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-emerald-600 bg-emerald-50">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronDown
+                            className={`h-4 w-4 shrink-0 text-slate-400 mt-1 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {isOpen && (
+                          <div className="px-3.5 pb-3.5 pt-0 border-t border-border/70 bg-slate-50/60">
+                            {hasOptions && (
+                              <div className="space-y-1.5 mt-3">
+                                {q.options!.map((opt, idx) => {
+                                  const label = optionLabel(opt);
+                                  const isCorrect =
+                                    q.answer != null &&
+                                    label.trim().toLowerCase() === String(q.answer).trim().toLowerCase();
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium border ${
+                                        isCorrect
+                                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                          : "bg-white border-border text-slate-600"
+                                      }`}
+                                    >
+                                      {isCorrect ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                      ) : (
+                                        <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-300" />
+                                      )}
+                                      {label}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {!hasOptions && q.answer && (
+                              <div className="flex items-start gap-2 rounded-lg px-3 py-2 mt-3 text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-700">
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <span>{q.answer}</span>
+                              </div>
+                            )}
+
+                            {!hasOptions && !q.answer && (
+                              <p className="text-xs text-slate-400 mt-3">No answer key set for this question.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            
 
             {/* Teacher tips banner */}
             <div className="rounded-2xl border border-border bg-white px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
